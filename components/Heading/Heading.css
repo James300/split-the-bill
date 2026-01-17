@@ -1,0 +1,82 @@
+.h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: bold;
+  line-height: 1.2;
+
+  text-decoration-color: var(--primary);
+  text-decoration-skip-ink: none;
+  text-decoration-thickness: 16px;
+  text-underline-offset: -8px;
+}
+
+.h1 > span,
+.h2 > span,
+.h3 > span,
+.h4 > span,
+.h5 > span,
+.h6 > span {
+  text-decoration-thickness: 16px;
+}
+
+.h1 > span[class~='font-bold'],
+.h2 > span[class~='font-bold'],
+.h3 > span[class~='font-bold'],
+.h4 > span[class~='font-bold'],
+.h5 > span[class~='font-bold'],
+.h6 > span[class~='font-bold'] {
+  color: var(--text-highlight);
+}
+
+.h1 {
+  font-size: 36px;
+}
+
+.h2 {
+  font-size: 24px;
+}
+
+.h3 {
+  font-size: 20px;
+}
+
+.h4 {
+  font-size: 16px;
+}
+
+.h5 {
+  font-size: 14px;
+}
+
+.h6 {
+  font-size: 12px;
+}
+
+@media only screen and (min-width: 64rem) {
+  .h1 {
+    font-size: 50px;
+  }
+
+  .h2 {
+    font-size: 45px;
+  }
+
+  .h3 {
+    font-size: 36px;
+  }
+
+  .h4 {
+    font-size: 24px;
+  }
+
+  .h5 {
+    font-size: 18px;
+  }
+
+  .h6 {
+    font-size: 14px;
+  }
+}
