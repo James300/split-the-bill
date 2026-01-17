@@ -1,0 +1,17 @@
+Tables
+
+- expense
+- payment
+- payment_allocations
+- settlement
+- user
+- user_expense
+
+expense - This is responsible for storing a list of payments from users
+payment - This is a payment submitted by a user to the expense
+payment_allocations - This is a join table for users who should split a payment and the amount they owe
+settlement - This is responsible for tracking the settlement of payments between users
+user - This is a user of the application
+user_expense - This is a join table of users to expenses
+
+View the schemas in ./lib/schemas to see the table structure
