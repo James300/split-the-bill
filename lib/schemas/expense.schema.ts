@@ -10,7 +10,8 @@ export const ExpenseSchema = z.object({
   created_at: z.date(),
   updated_at: z.date(),
 
-  totalAmount: z.number().int().nonnegative(),
+  isAllPaid: z.boolean(),
+  amountTotal: z.number().int().nonnegative(),
 
   participants: z.array(ExpenseParticipantSchema).min(1),
 })
@@ -24,6 +25,15 @@ export const ExpenseCreateSchema = z.object({
 })
 
 export type ExpenseCreateInput = z.infer<typeof ExpenseCreateSchema>
+
+export const ExpenseUpdateSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string().min(1).max(255),
+  currency: CurrencySchema,
+  description: z.string().optional(),
+})
+
+export type ExpenseUpdateInput = z.infer<typeof ExpenseUpdateSchema>
 
 export const ExpenseUserAddSchema = z.object({
   expense_id: z.number().int().positive(),

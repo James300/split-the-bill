@@ -16,3 +16,10 @@ export const UserPublicSchema = z.object({
 })
 
 export type UserPublic = z.infer<typeof UserPublicSchema>
+
+export const UserCreateSchema = z.object({
+  name: z.string().min(1).max(255),
+  email: z.email(),
+})
+
+export type UserInput = z.infer<typeof UserCreateSchema>

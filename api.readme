@@ -1,0 +1,42 @@
+### Expenses
+
+| Method | Endpoint            | Purpose                     | Request Body         | Response        |
+| ------ | ------------------- | --------------------------- | -------------------- | --------------- |
+| GET    | `/api/expenses`     | List expenses (read model)  | —                    | `ExpenseRead[]` |
+| GET    | `/api/expenses/:id` | Expense detail (read model) | —                    | `ExpenseRead`   |
+| POST   | `/api/expenses`     | Create expense              | `ExpenseCreateInput` | `ExpenseRead`   |
+| PATCH  | `/api/expenses/:id` | Update expense metadata     | `ExpenseUpdateInput` | `ExpenseRead`   |
+| DELETE | `/api/expenses/:id` | Delete expense              | —                    | `200`           |
+
+
+### Payments
+
+| Method | Endpoint                   | Purpose                      | Request Body           | Response         |
+| ------ | -------------------------- | ---------------------------- | -----------------------| ---------------- |
+| GET    | `/api/payments?expenseId=` | List payments for an expense | —                      | `Payment[]`      |
+| GET    | `/api/payments/:id`        | Get payment details          | —                      | `Payment`        |
+| POST   | `/api/payments`            | Create payment               | PaymentInput           | `Payment`        |
+| UPDATE | `/api/payments/:id`        | Update payment               | PaymentUpdateInput     | `Payment`        |
+| DELETE | `/api/payments/:id`        | Delete payment               | —                      | `200`            |
+
+
+### Settlements
+
+| Method | Endpoint                      | Purpose                         | Request Body            | Response       |
+| ------ | ----------------------------- | ------------------------------- | ----------------------- | -------------- |
+| GET    | `/api/settlements?expenseId=` | List settlements for an expense | —                       | `Settlement[]` |
+| GET    | `/api/settlements/:id`        | Settlement detail               | —                       | `Settlement`   |
+| POST   | `/api/settlements`            | Create settlement               | `SettlementInput`       | `Settlement`   |
+| PATCH  | `/api/settlements/:id`        | Update settlement               | `SettlementUpdateInput` | `Settlement`   |
+| DELETE | `/api/settlements/:id`        | Delete settlement               | —                       | `200`          |
+
+
+### Users
+
+| Method | Endpoint         | Purpose          | Request Body | Response         |
+| ------ | ---------------- | ---------------- | ------------ | ---------------- |
+| GET    | `/api/users`     | List all users   | —            | `UserPublic[]`   |
+| GET    | `/api/users/:id` | Get user details | —            | `User`           |
+| POST   | `/api/users`     | Create a user    | UserInput    | `User`           |
+| UPDATE | `/api/users/:id` | Update user      | UserInput    | `User`           |
+| DELETE | `/api/users/:id` | Delete user      | —            | `200`            |

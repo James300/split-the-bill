@@ -7,3 +7,10 @@ export const PaymentAllocationSchema = z.object({
 })
 
 export type PaymentAllocation = z.infer<typeof PaymentAllocationSchema>
+
+export const PaymentAllocationCreateSchema = z.object({
+  user_id: z.number().int().positive(),
+  amount: z.number().int().positive(),
+})
+
+export type PaymentAllocationCreateInput = z.infer<typeof PaymentAllocationCreateSchema>
