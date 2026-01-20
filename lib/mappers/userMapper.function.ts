@@ -1,0 +1,26 @@
+import { User, UserInput, UserPublic } from '@/lib/schemas/user.schema'
+import { ICreateUser, IUser, IUserPublic } from '@/types/user.interface'
+
+export function mapUserInput(user: ICreateUser): UserInput {
+  return {
+    name: user.name,
+    email: user.email,
+  }
+}
+
+export function mapUserRecord(user: User): IUser {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    createdAt: user.created_at.toISOString(),
+    updatedAt: user.updated_at.toISOString(),
+  }
+}
+
+export function mapUserPublicRecord(user: UserPublic): IUserPublic {
+  return {
+    id: user.id,
+    name: user.name,
+  }
+}

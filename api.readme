@@ -1,3 +1,6 @@
+The BE will map incoming data from the BE from snake_case to camelCase.
+The BE will map outgoing data to the BE from camelCase to snake_case.
+
 ### Expenses
 
 | Method | Endpoint            | Purpose                     | Request Body         | Response        |

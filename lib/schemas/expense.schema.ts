@@ -5,13 +5,13 @@ import { ExpenseParticipantSchema } from './expense-participant.schema'
 export const ExpenseSchema = z.object({
   id: z.number().int().positive(),
   name: z.string().min(1).max(255),
-  description: z.string().nullable(),
+  description: z.string().optional(),
   currency: CurrencySchema,
   created_at: z.date(),
   updated_at: z.date(),
 
-  isAllPaid: z.boolean(),
-  amountTotal: z.number().int().nonnegative(),
+  is_all_paid: z.boolean(),
+  amount_total: z.number().int().nonnegative(),
 
   participants: z.array(ExpenseParticipantSchema).min(1),
 })
