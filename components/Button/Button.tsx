@@ -9,12 +9,13 @@ function Button({ children, onClick, ...props }: IButtonProps) {
   return (
     <button
       {...props}
-      className="
+      className={`
         rounded-xl cursor-pointer px-3 py-2
         bg-primary text-primary-foreground
         hover:bg-primary-hover
         disabled:opacity-50 disabled:cursor-not-allowed
-      "
+        ${props.className}
+      `}
       onClick={onClick}
     >
       {children}
