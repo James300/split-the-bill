@@ -7,7 +7,7 @@ function Header() {
       <div className="flex items-center gap-4 w-full">
         <Link href="/">
           <h1 className="text-2xl font-bold">
-            Bev and James' Wedding
+            Split The Bill
           </h1>
         </Link>
       </div>
