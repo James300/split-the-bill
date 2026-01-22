@@ -32,10 +32,10 @@ function Page({ actionButton, children, heroImageUrl, size = '2xl' }: IPageProps
   const maxWidth = getPageMaxWidth(size);
 
   return (
-    <div className='flex flex-col items-center w-full h-full'>
+    <div className='flex flex-col flex-1 items-center w-full h-full'>
       {heroImageUrl && <HeroImage actionButton={actionButton} imageUrl={heroImageUrl} />}
-      <div className={`flex flex-col w-full h-full ${maxWidth} p-4 lg:px-24 lg:py-12`}>
-        <div className="flex flex-col justify-center gap-4 w-full bg-background">
+      <div className={`flex flex-col flex-1 w-full h-full ${maxWidth} p-4 lg:px-24 lg:py-12`}>
+        <div className="flex flex-col flex-1 gap-4 w-full bg-background">
           {children}
         </div>
       </div>

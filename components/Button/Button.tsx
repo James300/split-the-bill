@@ -10,7 +10,7 @@ function Button({ children, onClick, ...props }: IButtonProps) {
     <button
       {...props}
       className={`
-        rounded-xl cursor-pointer px-3 py-2
+        rounded-xl cursor-pointer px-4 py-3
         bg-primary text-primary-foreground
         hover:bg-primary-hover
         disabled:opacity-50 disabled:cursor-not-allowed
