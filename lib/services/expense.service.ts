@@ -1,7 +1,7 @@
 import { Expense, ExpenseCreateInput } from '@/lib/schemas/expense.schema';
 import { verifyExpenseInput } from '@/lib/utils/validation/expense-validations.function';
 
-export async function createExpense (expense: ExpenseCreateInput): Expense {
+export async function createExpense (expense: ExpenseCreateInput): Promise<Expense> {
   verifyExpenseInput(expense)
 
   return {
