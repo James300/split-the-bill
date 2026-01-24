@@ -3,8 +3,7 @@ import ExpenseForm from '@/containers/ExpenseForm/ExpenseForm'
 
 export default async function ExpenseNewPage() {
   return (
-    <Page>
-      New Expense
+    <Page title="New Expense">
       <ExpenseForm />
     </Page>
   )

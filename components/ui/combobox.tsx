@@ -19,12 +19,14 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import Separator from '../Separator'
+import Label from '../typography/Label/Label'
 
 export interface IComboboxProps {
   className?: string
   emptyLabel: string
   items: string[]
   itemShortcuts?: string[]
+  label?: string
   placeholder?: string
   separatorIndices?: number[]
   onChange: (item: string) => void
@@ -35,6 +37,7 @@ export function Combobox({
   emptyLabel,
   items,
   itemShortcuts,
+  label,
   placeholder,
   separatorIndices,
   onChange,
@@ -53,18 +56,25 @@ export function Combobox({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
+      {label && (
+        <Label id='combobox-label'>
+          {label}
+        </Label>
+      )}
       <PopoverTrigger asChild>
         <Button
+          id='combobox-label'
           variant='outline'
           role='combobox'
           aria-expanded={open}
-          className='w-[400px] justify-between'
+          className='w-full justify-between text-md p-5! rounded-xl'
         >
-          {value ? value : placeholder}
+          {!value && placeholder && <div className='text-placeholder'>{placeholder}</div>}
+          {value ? value : undefined}
           <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className='w-[400px] h-[400px] p-0'>
+      <PopoverContent className='w-full h-[400px] p-0'>
         <Command>
           <CommandInput placeholder={placeholder} />
           <CommandEmpty>{emptyLabel}</CommandEmpty>

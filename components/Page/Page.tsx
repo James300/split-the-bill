@@ -8,6 +8,7 @@ export interface IPageProps {
   children: React.ReactNode;
   heroImageUrl?: string;
   size?: PageSize;
+  title?: string;
 }
 
 function getPageMaxWidth(size: PageSize = '2xl') {
@@ -28,7 +29,7 @@ function getPageMaxWidth(size: PageSize = '2xl') {
   }
 }
 
-function Page({ actionButton, children, heroImageUrl, size = '2xl' }: IPageProps) {
+function Page({ actionButton, children, heroImageUrl, size = '2xl', title }: IPageProps) {
   const maxWidth = getPageMaxWidth(size);
 
   return (
@@ -36,6 +37,7 @@ function Page({ actionButton, children, heroImageUrl, size = '2xl' }: IPageProps
       {heroImageUrl && <HeroImage actionButton={actionButton} imageUrl={heroImageUrl} />}
       <div className={`flex flex-col flex-1 w-full h-full ${maxWidth} p-4 lg:px-24 lg:py-12`}>
         <div className="flex flex-col flex-1 gap-4 w-full bg-background">
+          {title && <h1 className="text-xl font-bold">{title}</h1>}
           {children}
         </div>
       </div>

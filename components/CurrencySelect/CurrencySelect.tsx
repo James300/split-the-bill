@@ -17,7 +17,8 @@ function CurrencySelect({
       emptyLabel='No currencies found'
       items={currencyNames}
       itemShortcuts={currencyCodes}
-      placeholder='Select a currency'
+      label='Currency'
+      placeholder='Select a currency...'
       separatorIndices={[4]}
       onChange={onChange}
     />
