@@ -20,7 +20,7 @@ function ExpenseForm({
     <div className='flex flex-col'>
       <Input className='mb-4' id='expense-name' label='Name' placeholder='Give your expense a name...' onChange={onNameChange} />
       <CurrencySelect onChange={onCurrencyChange} />
-      <Button className='mt-4' onClick={onSubmit}>Save Expense</Button>
+      <Button className='mt-8' onClick={onSubmit}>Save Expense</Button>
     </div>
   )
 }

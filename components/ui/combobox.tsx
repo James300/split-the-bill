@@ -67,7 +67,7 @@ export function Combobox({
           variant='outline'
           role='combobox'
           aria-expanded={open}
-          className='w-full justify-between text-md p-5! rounded-xl'
+          className='w-full justify-between text-md md:text-sm p-5! rounded-xl'
         >
           {!value && placeholder && <div className='text-placeholder'>{placeholder}</div>}
           {value ? value : undefined}

@@ -26,5 +26,6 @@ export interface ICreateExpense extends Omit<
   'createdAt' |
   'updatedAt' |
   'isAllPaid' |
-  'amountTotal'
+  'amountTotal' |
+  'participants'
 > {}

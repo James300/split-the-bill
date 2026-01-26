@@ -2,10 +2,14 @@
 
 import { memo, useCallback, useState } from 'react'
 import ExpenseFormComponent from '@/components/ExpenseForm/ExpenseForm'
+import useExpenseSave from '@/hooks/useExpenseSave/useExpenseSave'
+import mapCurrencyNameToCode from '@/lib/utils/currency/mapCurrencyNameToCode'
 
 function ExpenseForm() {
   const [currency, setCurrency] = useState('')
   const [name, setName] = useState('')
+
+  const { saveExpense } = useExpenseSave()
 
   const handleCurrencyChange = useCallback((currency: string) => {
     setCurrency(currency)
@@ -16,8 +20,11 @@ function ExpenseForm() {
   }, [])
 
   const handleSubmit = useCallback(() => {
-    // todo: submit data to the BE
-  }, [currency, name])
+    saveExpense({
+      name,
+      currency: mapCurrencyNameToCode(currency),
+    })
+  }, [currency, name, saveExpense])
 
   return (
     <ExpenseFormComponent

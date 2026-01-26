@@ -155,6 +155,8 @@ export const currencyNames = [
   "Zimbabwean Dollar",
 ]
 
+export type CurrencyName = (typeof currencyNames)[number]
+
 export const currencyCodes = [
   "USD",
   "CAD",
@@ -312,7 +314,9 @@ export const currencyCodes = [
   "ZWL",
 ]
 
-export const currencyCodeMap = {
+export type CurrencyCode = (typeof currencyCodes)[number]
+
+export const currencyCodeMap: Record<CurrencyName, CurrencyCode>= {
   "AED": "United Arab Emirates Dirham",
   "AFN": "Afghan Afghani",
   "ALL": "Albanian Lek",
@@ -469,7 +473,7 @@ export const currencyCodeMap = {
   "ZWL": "Zimbabwean Dollar",
 }
 
-export const currencyNameMap = {
+export const currencyNameMap: Record<CurrencyCode, CurrencyName>= {
   "United Arab Emirates Dirham": "AED",
   "Afghan Afghani": "AFN",
   "Albanian Lek": "ALL",
@@ -626,7 +630,7 @@ export const currencyNameMap = {
   "Zimbabwean Dollar": "ZWL",
 }
 
-export const currencySymbolMap = {
+export const currencySymbolMap: Record<CurrencyCode, string> = {
   "AED": "د.إ",
   "AFN": "؋",
   "ALL": "L",

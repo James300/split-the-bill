@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import Separator from '@/components/Separator';
 import FooterContainer from '@/containers/Footer/Footer';
 import HeaderContainer from '@/containers/Header/Header';
-import Separator from '@/components/Separator';
+// import { OverlayProvider } from '@/providers/OverlayProvider/OverlayProvider';
 
 import './globals.css';
 
@@ -31,9 +32,11 @@ export default function RootLayout({
         <div className='layout'>
           <HeaderContainer />
           <Separator />
-          <main className='main'>
-            {children}
-          </main>
+          {/* <OverlayProvider> */}
+            <main className='main'>
+              {children}
+            </main>
+          {/* </OverlayProvider> */}
           <Separator />
           <FooterContainer />
         </div>
