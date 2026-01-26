@@ -29,6 +29,8 @@ export interface IComboboxProps {
   label?: string
   placeholder?: string
   separatorIndices?: number[]
+  helperText?: string
+  hasError?: boolean
   onChange: (item: string) => void
 }
 
@@ -40,6 +42,8 @@ export function Combobox({
   label,
   placeholder,
   separatorIndices,
+  helperText,
+  hasError,
   onChange,
 }: IComboboxProps) {
   const [open, setOpen] = useState(false)
@@ -67,7 +71,10 @@ export function Combobox({
           variant='outline'
           role='combobox'
           aria-expanded={open}
-          className='w-full justify-between text-md md:text-sm p-5! rounded-xl'
+          className={cn(
+            'w-full justify-between text-md md:text-sm p-5! rounded-xl',
+            hasError && 'border-red-500'
+          )}
         >
           {!value && placeholder && <div className='text-placeholder'>{placeholder}</div>}
           {value ? value : undefined}
@@ -112,6 +119,9 @@ export function Combobox({
           </CommandGroup>
         </Command>
       </PopoverContent>
+      {helperText && (
+        <p className='text-red-500 text-sm mt-1'>{helperText}</p>
+      )}
     </Popover>
   )
 }

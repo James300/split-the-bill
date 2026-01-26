@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import Separator from '@/components/Separator';
 import FooterContainer from '@/containers/Footer/Footer';
 import HeaderContainer from '@/containers/Header/Header';
+import Toaster from '@/components/Toaster';
 // import { OverlayProvider } from '@/providers/OverlayProvider/OverlayProvider';
 
 import './globals.css';
@@ -40,6 +41,7 @@ export default function RootLayout({
           <Separator />
           <FooterContainer />
         </div>
+        <Toaster />
       </body>
     </html>
   );

@@ -3,11 +3,13 @@ import { ICreateExpense } from '@/types/expense.interface'
 
 function useExpenseSave() {
   const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
   const saveExpense = useCallback(async (expense: ICreateExpense) => {
     try {
       setIsSaving(true)
+      setError(null)
+      
       const response = await fetch('/api/expenses', {
         method: 'POST',
         headers: {
@@ -16,10 +18,15 @@ function useExpenseSave() {
         body: JSON.stringify(expense),
       })
 
-      console.log(response)
+      if (!response.ok) {
+        setError('Failed to save expense. Please try again later.')
+        return
+      }
+
+      const data = await response.json()
+      return data
     } catch (err) {
-      console.log(err)
-      setError(err as any)
+      setError('Failed to save expense. Please try again later.')
     } finally {
       setIsSaving(false)
     }

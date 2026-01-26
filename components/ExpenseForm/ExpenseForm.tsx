@@ -9,18 +9,46 @@ export interface IExpenseFormProps {
   onCurrencyChange: (currency: string) => void
   onNameChange: (evt: React.ChangeEvent<HTMLInputElement>) => void
   onSubmit: () => void
+  validationErrors?: {
+    name?: string
+    currency?: string
+  }
+  isSubmitting?: boolean
 }
 
 function ExpenseForm({
   onCurrencyChange,
   onNameChange,
   onSubmit,
+  validationErrors = {},
+  isSubmitting = false,
 }: IExpenseFormProps) {
   return (
     <div className='flex flex-col'>
-      <Input className='mb-4' id='expense-name' label='Name' placeholder='Give your expense a name...' onChange={onNameChange} />
-      <CurrencySelect onChange={onCurrencyChange} />
-      <Button className='mt-8' onClick={onSubmit}>Save Expense</Button>
+      <div className='mb-4'>
+        <Input
+          id='expense-name' 
+          label='Name' 
+          placeholder='Give your expense a name...' 
+          helperText={validationErrors.name}
+          hasError={!!validationErrors.name}
+          onChange={onNameChange} 
+        />
+      </div>
+      <div>
+        <CurrencySelect 
+          helperText={validationErrors.currency}
+          hasError={!!validationErrors.currency}
+          onChange={onCurrencyChange} 
+        />
+      </div>
+      <Button 
+        className='mt-8' 
+        onClick={onSubmit}
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? 'Saving...' : 'Save Expense'}
+      </Button>
     </div>
   )
 }
