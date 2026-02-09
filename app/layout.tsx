@@ -39,7 +39,7 @@ export default function RootLayout({
             </main>
           {/* </OverlayProvider> */}
           <Separator />
-          <FooterContainer />
+          {/* <FooterContainer /> */}
         </div>
         <Toaster />
       </body>

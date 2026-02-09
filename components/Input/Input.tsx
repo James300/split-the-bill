@@ -8,19 +8,24 @@ export interface IInputProps extends React.ComponentProps<'input'> {
   label?: string
   helperText?: string
   hasError?: boolean
+  suffixNode?: React.ReactNode
 }
 
-function Input({ className, id, label, helperText, hasError, ...props }: IInputProps) {
+function Input({ className, id, label, helperText, hasError, suffixNode, ...props }: IInputProps) {
   const cnClasses = cn(
     'border-border text-foreground rounded-xl p-5',
     hasError && 'border-red-500',
+    suffixNode && 'pr-10',
     className
   )
 
   return (
     <>
       {label && <Label id={id}>{label}</Label>}
-      <InputComponent id={id} className={cnClasses} {...props} />
+      <div className='relative'>
+        <InputComponent id={id} className={cnClasses} {...props} />
+        {suffixNode}
+      </div>
       {helperText && (
         <p className='text-red-500 text-sm mt-1'>{helperText}</p>
       )}

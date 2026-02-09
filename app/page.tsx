@@ -25,7 +25,7 @@ const mockData = {
 
 export default function Home() {
   return (
-    <Page>
+    <Page title='Expenses'>
       <ExpensesList {...mockData} />
       <div className='flex justify-center w-full mt-auto'>
         <Link href='/expenses/new'>
