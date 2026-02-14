@@ -4,6 +4,8 @@ import Separator from '@/components/Separator';
 import FooterContainer from '@/containers/Footer/Footer';
 import HeaderContainer from '@/containers/Header/Header';
 import Toaster from '@/components/Toaster';
+import { authClient } from '@/lib/auth/client'; 
+import Providers from '@/providers/AuthProvider/AuthProvider';
 // import { OverlayProvider } from '@/providers/OverlayProvider/OverlayProvider';
 
 import './globals.css';
@@ -28,18 +30,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en'>
+    <html lang='en' suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <div className='layout'>
-          <HeaderContainer />
-          <Separator />
-          {/* <OverlayProvider> */}
-            <main className='main'>
-              {children}
-            </main>
-          {/* </OverlayProvider> */}
-          <Separator />
-          {/* <FooterContainer /> */}
+          <Providers>
+            <HeaderContainer />
+            <Separator />
+            {/* <OverlayProvider> */}
+              <main className='main'>
+                {children}
+              </main>
+            {/* </OverlayProvider> */}
+            <Separator />
+            {/* <FooterContainer /> */}
+          </Providers>
         </div>
         <Toaster />
       </body>

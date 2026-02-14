@@ -1,3 +1,3 @@
-import { createAuthClient } from '@neondatabase/neon-js/auth';
+import { createAuthClient } from '@neondatabase/auth/next';
 
-export const authClient = createAuthClient(process.env.NEON_AUTH_BASE_URL!)
+export const authClient = createAuthClient()
