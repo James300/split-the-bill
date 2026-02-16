@@ -15,9 +15,8 @@ function Providers({ children }: { children: React.ReactNode }) {
       navigate={router.push}
       replace={router.replace}
       onSessionChange={() => router.refresh()}
-      emailOTP
       social={{ providers: ['google'] }}
-      redirectTo='/expenses'
+      redirectTo='/'
       Link={Link}
       organization={{}}
     >

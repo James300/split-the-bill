@@ -19,13 +19,14 @@ export default async function UserProfilePage({ params }: Props) {
 
   // Users can only view their own profile
   if (session.user.id !== id) {
+    console.log('test', session.user.id, id)
     redirect('/')
   }
 
   const user = session.user
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-8 max-w-2xl mx-auto">
+    <div className="flex flex-col gap-6 px-4 py-8 w-full max-w-2xl mx-auto">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold">Profile</h1>
         <p className="text-muted-foreground">
