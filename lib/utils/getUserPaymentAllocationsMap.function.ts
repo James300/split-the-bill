@@ -1,7 +1,7 @@
 import { PaymentAllocation } from '@/lib/schemas/payment-allocation.schema';
 
 export function getUserPaymentAllocationsMap (paymentAllocations: PaymentAllocation[]) {
-  const userPaymentAllocationsMap: Record<number, PaymentAllocation[]> = {}
+  const userPaymentAllocationsMap: Record<string, PaymentAllocation[]> = {}
 
   for (const paymentAllocation of paymentAllocations) {
     const userId = paymentAllocation.user_id

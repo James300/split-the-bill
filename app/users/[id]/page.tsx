@@ -19,7 +19,6 @@ export default async function UserProfilePage({ params }: Props) {
 
   // Users can only view their own profile
   if (session.user.id !== id) {
-    console.log('test', session.user.id, id)
     redirect('/')
   }
 

@@ -38,8 +38,6 @@ function PasswordInput({
 }: PasswordInputProps) {
   const [showPassword, setShowPassword] = useState(false)
 
-  console.log(showPassword)
-
   const onShowToggle = useCallback(() => {
     setShowPassword((prev) => !prev)
   }, [])

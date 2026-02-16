@@ -3,11 +3,11 @@ import { Settlement } from '@/lib/schemas/settlment.schema'
 export function getUserSettlementsMap(
   settlements: Settlement[],
 ): {
-  payerSettlementsMap: Record<number, Settlement[]>
-  payeeSettlementsMap: Record<number, Settlement[]>
+  payerSettlementsMap: Record<string, Settlement[]>
+  payeeSettlementsMap: Record<string, Settlement[]>
 } {
-  const payerSettlementsMap: Record<number, Settlement[]> = {}
-  const payeeSettlementsMap: Record<number, Settlement[]> = {}
+  const payerSettlementsMap: Record<string, Settlement[]> = {}
+  const payeeSettlementsMap: Record<string, Settlement[]> = {}
 
   for (const settlement of settlements) {
     const payerId = settlement.payer_user_id

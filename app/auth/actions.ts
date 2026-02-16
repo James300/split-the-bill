@@ -10,7 +10,6 @@ export async function signInWithEmail(
   _prevState: { error: string } | null,
   formData: FormData,
 ) {
-  console.log('email sign in')
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 

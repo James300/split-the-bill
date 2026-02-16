@@ -9,7 +9,7 @@ function useExpenseSave() {
     try {
       setIsSaving(true)
       setError(null)
-      
+
       const response = await fetch('/api/expenses', {
         method: 'POST',
         headers: {
@@ -23,8 +23,7 @@ function useExpenseSave() {
         return
       }
 
-      const data = await response.json()
-      return data
+      return await response.json()
     } catch (err) {
       setError('Failed to save expense. Please try again later.')
     } finally {
