@@ -1,4 +1,4 @@
-import { createExpenseInDatabase, getExpensesFromDatabaseByUserId } from '@/lib/db/expense.repo'
+import { createExpenseInDatabase, getExpenseFromDatabaseById, getExpensesFromDatabaseByUserId } from '@/lib/db/expense.repo'
 import { Expense, ExpenseCreateInput, ExpenseCreateSchema } from '@/lib/schemas/expense.schema';
 import { ValidationError } from '@/lib/utils/validation/validation-error';
 
@@ -34,6 +34,13 @@ export async function createExpense (
       },
     ]
   }
+}
+
+export async function getExpenseById(
+  userId: string,
+  expenseId: number,
+): Promise<Expense> {
+  return await getExpenseFromDatabaseById(userId, expenseId)
 }
 
 export async function getExpensesByUserId(

@@ -47,6 +47,27 @@ async function createUserExpense(
   [userId, expenseId])
 }
 
+export async function getExpenseFromDatabaseById(
+  userId: string,
+  expenseId: number,
+): Promise<Expense> {
+  const client = await pool.connect()
+
+  try {
+    const result = await client.query<Expense>(`
+      SELECT expense.* FROM expense
+      JOIN user_expense ON expense.id = user_expense.expense_id
+      WHERE user_expense.user_id = $1 AND expense.id = $2
+    `, [userId, expenseId])
+
+    return result.rows[0]
+  } catch (err) {
+    throw err
+  } finally {
+    client.release()
+  }
+}
+
 export async function getExpensesFromDatabaseByUserId(
   userId: string,
 ): Promise<Expense[]> {
