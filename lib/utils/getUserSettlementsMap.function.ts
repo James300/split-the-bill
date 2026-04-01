@@ -1,4 +1,4 @@
-import { Settlement } from '@/lib/schemas/settlment.schema'
+import { Settlement } from '@/lib/schemas/settlement.schema'
 
 export function getUserSettlementsMap(
   settlements: Settlement[],

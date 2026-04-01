@@ -1,7 +1,7 @@
-import { User, UserInput, UserPublic } from '@/lib/schemas/user.schema'
+import { User, UserCreateInput, UserPublic } from '@/lib/schemas/user.schema'
 import { ICreateUser, IUser, IUserPublic } from '@/types/user.interface'
 
-export function mapUserInput(user: ICreateUser): UserInput {
+export function mapUserInput(user: ICreateUser): UserCreateInput {
   return {
     name: user.name,
     email: user.email,

@@ -4,8 +4,8 @@ export const UserSchema = z.object({
   id: z.string().min(1).max(64),
   name: z.string().min(1).max(255),
   email: z.email(),
-  created_at: z.date(),
-  updated_at: z.date(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
 })
 
 export type User = z.infer<typeof UserSchema>
@@ -22,4 +22,11 @@ export const UserCreateSchema = z.object({
   email: z.email(),
 })
 
-export type UserInput = z.infer<typeof UserCreateSchema>
+export type UserCreateInput = z.infer<typeof UserCreateSchema>
+
+export const UserUpdateSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  email: z.email().optional(),
+})
+
+export type UserUpdateInput = z.infer<typeof UserUpdateSchema>

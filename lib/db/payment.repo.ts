@@ -1,100 +1,101 @@
-import { PoolClient } from '@neondatabase/serverless'
 import { pool } from '@/lib/db'
-import { Payment, PaymentInput, PaymentUpdateInput } from '@/lib/schemas/payment.schema'
-import { PaymentAllocationCreateInput } from '@/lib/schemas/payment-allocation.schema'
+import {
+  Payment,
+  PaymentCreateInput,
+  PaymentUpdateInput,
+} from '@/lib/schemas/payment.schema'
 
-export async function createPaymentWithAllocations(input: PaymentInput) {
+export async function createPaymentInDatabase(
+  input: PaymentCreateInput,
+): Promise<Payment> {
+  const result = await pool.query<Payment>(
+    `
+    INSERT INTO payments (expense_id, paid_by_user_id, amount)
+    VALUES ($1, $2, $3)
+    RETURNING id, expense_id, paid_by_user_id, amount;
+    `,
+    [input.expense_id, input.paid_by_user_id, input.amount],
+  )
+  return result.rows[0]
+}
+
+export async function getPaymentFromDatabaseById(
+  id: number,
+): Promise<Payment | null> {
+  const result = await pool.query<Payment>(
+    `
+    SELECT id, expense_id, paid_by_user_id, amount
+    FROM payments
+    WHERE id = $1;
+    `,
+    [id],
+  )
+  return result.rows[0] ?? null
+}
+
+export async function getPaymentsFromDatabaseByExpenseId(
+  expenseId: number,
+): Promise<Payment[]> {
+  const result = await pool.query<Payment>(
+    `
+    SELECT id, expense_id, paid_by_user_id, amount
+    FROM payments
+    WHERE expense_id = $1
+    ORDER BY id;
+    `,
+    [expenseId],
+  )
+  return result.rows
+}
+
+export async function updatePaymentInDatabase(
+  id: number,
+  patch: PaymentUpdateInput,
+): Promise<Payment | null> {
+  const fields: string[] = []
+  const values: unknown[] = []
+  let i = 1
+
+  if (patch.paid_by_user_id !== undefined) {
+    fields.push(`paid_by_user_id = $${i++}`)
+    values.push(patch.paid_by_user_id)
+  }
+  if (patch.amount !== undefined) {
+    fields.push(`amount = $${i++}`)
+    values.push(patch.amount)
+  }
+
+  if (fields.length === 0) {
+    return getPaymentFromDatabaseById(id)
+  }
+
+  values.push(id)
+
+  const result = await pool.query<Payment>(
+    `
+    UPDATE payments
+    SET ${fields.join(', ')}
+    WHERE id = $${i}
+    RETURNING id, expense_id, paid_by_user_id, amount;
+    `,
+    values,
+  )
+
+  return result.rows[0] ?? null
+}
+
+export async function deletePaymentFromDatabase(id: number): Promise<boolean> {
   const client = await pool.connect()
-
   try {
     await client.query('BEGIN')
-
-    const paymentResult = await client.query(
-      `
-      INSERT INTO payments (expense_id, paid_by_user_id, amount)
-      VALUES ($1, $2, $3)
-      RETURNING id
-      `,
-      [input.expense_id, input.paid_by_user_id, input.amount]
-    )
-
-    const paymentId = paymentResult.rows[0].id
-
-    insertAllocations(client, paymentId, input.allocations)
-
+    await client.query(`DELETE FROM payment_allocations WHERE payment_id = $1`, [id])
+    const result = await client.query(`DELETE FROM payments WHERE id = $1`, [id])
     await client.query('COMMIT')
-
-    return paymentId
+    return (result.rowCount ?? 0) > 0
   } catch (err) {
     await client.query('ROLLBACK')
     throw err
   } finally {
     client.release()
-  }
-}
-
-export async function updatePaymentWithAllocations(input: PaymentUpdateInput) {
-  const client = await pool.connect()
-
-  try {
-    await client.query("BEGIN")
-
-    const paymentResult = await client.query<Payment>(
-      `
-      SELECT id, expense_id
-      FROM payments
-      WHERE id = $1
-      FOR UPDATE
-      `,
-      [input.id]
-    )
-
-    if (paymentResult.rowCount === 0) {
-      throw new Error("Payment not found")
-    }
-
-    await client.query(
-      `
-      UPDATE payments
-      SET amount = $1, paid_by_user_id = $2
-      WHERE id = $3
-      `,
-      [input.amount, input.paid_by_user_id, input.id]
-    )
-
-    await client.query(
-      `
-      DELETE FROM payment_allocations
-      WHERE payment_id = $1
-      `,
-      [input.id]
-    )
-
-    insertAllocations(client, input.id, input.allocations)
-
-    await client.query("COMMIT")
-
-    return input
-  } catch (err) {
-    await client.query("ROLLBACK")
-    throw err
-  } finally {
-    client.release()
-  }
-}
-
-async function insertAllocations(client: PoolClient, paymentId: number, allocations: PaymentAllocationCreateInput[]) {
-  for (const alloc of allocations) {
-    await client.query(
-      `
-      INSERT INTO payment_allocations (
-        payment_id,
-        user_id,
-        amount
-      )
-      VALUES ($1, $2, $3)
-      `,
-      [paymentId, alloc.user_id, alloc.amount]
-    )
   }
 }

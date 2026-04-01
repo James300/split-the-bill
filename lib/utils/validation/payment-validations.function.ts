@@ -1,18 +1,19 @@
-import { PaymentInput } from '@/lib/schemas/payment.schema';
+export function verifyAllocationTotalsMatch(args: {
+  paymentAmount: number
+  allocations: { amount: number }[]
+}) {
+  const total = args.allocations.reduce((acc, alloc) => acc + alloc.amount, 0)
 
-export function verifyAllociationTotals(payment: PaymentInput) {
-  const total = payment.allocations.reduce((acc, alloc) => acc + alloc.amount, 0);
-
-  if (total !== payment.amount) {
-    throw new Error("Total of allocations does not match payment amount");
+  if (total !== args.paymentAmount) {
+    throw new Error('Total of allocations does not match payment amount')
   }
 }
 
-export function verifyUniqueUsers(payment: PaymentInput) {
-  const userIds = payment.allocations.map(alloc => alloc.user_id);
-  const uniqueUsers = new Set(userIds);
+export function verifyUniqueAllocationUsers(allocations: { user_id: string }[]) {
+  const userIds = allocations.map((alloc) => alloc.user_id)
+  const uniqueUsers = new Set(userIds)
 
   if (uniqueUsers.size !== userIds.length) {
-    throw new Error("Duplicate users in allocations");
+    throw new Error('Duplicate users in allocations')
   }
 }
