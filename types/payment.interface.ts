@@ -1,14 +1,21 @@
-import type { Payment, PaymentCreateInput, PaymentUpdateInput } from '@/lib/schemas/payment.schema'
-import type {
-  PaymentAllocation,
-  PaymentAllocationCreateInput,
-  PaymentAllocationUpdateInput,
-} from '@/lib/schemas/payment-allocation.schema'
+import { IEntity } from './common.interface'
 
-export type IPayment = Payment
-export type IPaymentCreate = PaymentCreateInput
-export type IPaymentUpdate = PaymentUpdateInput
+export interface IPayment extends IEntity {
+  expenseId: number
+  paidByUserId: string
+  amount: number
+}
 
-export type IPaymentAllocation = PaymentAllocation
-export type IPaymentAllocationCreate = PaymentAllocationCreateInput
-export type IPaymentAllocationUpdate = PaymentAllocationUpdateInput
+export interface IPaymentCreate extends Omit<IPayment, 'id' | 'createdAt' | 'updatedAt'> {}
+
+export interface IPaymentUpdate extends Partial<Omit<IPayment, 'id' | 'createdAt' | 'updatedAt'>> {}
+
+export interface IPaymentAllocation extends IEntity {
+  paymentId: number
+  userId: string
+  amount: number
+}
+
+export interface IPaymentAllocationCreate extends Omit<IPaymentAllocation, 'createdAt' | 'updatedAt'> {}
+
+export interface IPaymentAllocationUpdate extends Partial<Omit<IPaymentAllocation, 'createdAt' | 'updatedAt'>> {}

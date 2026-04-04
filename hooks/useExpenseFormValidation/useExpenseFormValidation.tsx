@@ -33,7 +33,7 @@ export function useExpenseFormValidation() {
     setErrors(prev => ({ ...prev, [field]: undefined }))
   }, [])
 
-  const clearAll = useCallback(() => {
+  const clearAllErrors = useCallback(() => {
     setErrors({})
   }, [])
 
@@ -41,6 +41,6 @@ export function useExpenseFormValidation() {
     errors,
     validate,
     clearError,
-    clearAll,
+    clearAllErrors,
   }
 }

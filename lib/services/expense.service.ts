@@ -4,6 +4,7 @@ import {
   deleteExpenseFromDatabase,
   getExpenseFromDatabaseById,
   getExpensesFromDatabaseByUserId,
+  getExpensesFromDatabaseByUserIdSince,
   removeUserFromExpenseInDatabase,
   updateExpenseInDatabase,
 } from '@/lib/db/expense.repo'
@@ -67,6 +68,10 @@ export async function getExpenseById(
 
 export async function getExpensesByUserId(userId: string): Promise<Expense[]> {
   return getExpensesFromDatabaseByUserId(userId)
+}
+
+export async function getExpensesByUserIdSince(userId: string, since: number): Promise<Expense[]> {
+  return getExpensesFromDatabaseByUserIdSince(userId, since)
 }
 
 export async function updateExpense(

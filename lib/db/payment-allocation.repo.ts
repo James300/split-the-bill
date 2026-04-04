@@ -10,9 +10,9 @@ export async function createPaymentAllocationInDatabase(
 ): Promise<PaymentAllocation> {
   const result = await pool.query<PaymentAllocation>(
     `
-    INSERT INTO payment_allocations (payment_id, user_id, amount)
-    VALUES ($1, $2, $3)
-    RETURNING payment_id, user_id, amount;
+    INSERT INTO payment_allocations (payment_id, user_id, amount, created_at, updated_at)
+    VALUES ($1, $2, $3, NOW(), NOW())
+    RETURNING payment_id, user_id, amount, created_at, updated_at;
     `,
     [input.payment_id, input.user_id, input.amount],
   )
@@ -24,7 +24,7 @@ export async function getPaymentAllocationsFromDatabaseByPaymentId(
 ): Promise<PaymentAllocation[]> {
   const result = await pool.query<PaymentAllocation>(
     `
-    SELECT payment_id, user_id, amount
+    SELECT payment_id, user_id, amount, created_at, updated_at
     FROM payment_allocations
     WHERE payment_id = $1
     ORDER BY user_id;
@@ -39,13 +39,31 @@ export async function getPaymentAllocationsFromDatabaseByExpenseId(
 ): Promise<PaymentAllocation[]> {
   const result = await pool.query<PaymentAllocation>(
     `
-    SELECT pa.payment_id, pa.user_id, pa.amount
+    SELECT pa.payment_id, pa.user_id, pa.amount, pa.created_at, pa.updated_at
     FROM payment_allocations pa
     JOIN payments p ON p.id = pa.payment_id
     WHERE p.expense_id = $1
     ORDER BY pa.payment_id, pa.user_id;
     `,
     [expenseId],
+  )
+  return result.rows
+}
+
+export async function getPaymentAllocationsFromDatabaseByExpenseIdSince(
+  expenseId: number,
+  since: number,
+): Promise<PaymentAllocation[]> {
+  const sinceDate = new Date(since)
+  const result = await pool.query<PaymentAllocation>(
+    `
+    SELECT pa.payment_id, pa.user_id, pa.amount, pa.created_at, pa.updated_at
+    FROM payment_allocations pa
+    JOIN payments p ON p.id = pa.payment_id
+    WHERE p.expense_id = $1 AND pa.updated_at > $2
+    ORDER BY pa.updated_at DESC;
+    `,
+    [expenseId, sinceDate],
   )
   return result.rows
 }
@@ -72,6 +90,7 @@ export async function updatePaymentAllocationInDatabase(
     return getPaymentAllocationFromDatabase(paymentId, userId)
   }
 
+  fields.push(`updated_at = NOW()`)
   const whereStart = i
   values.push(paymentId, userId)
 
@@ -80,7 +99,7 @@ export async function updatePaymentAllocationInDatabase(
     UPDATE payment_allocations
     SET ${fields.join(', ')}
     WHERE payment_id = $${whereStart} AND user_id = $${whereStart + 1}
-    RETURNING payment_id, user_id, amount;
+    RETURNING payment_id, user_id, amount, created_at, updated_at;
     `,
     values,
   )
@@ -94,7 +113,7 @@ export async function getPaymentAllocationFromDatabase(
 ): Promise<PaymentAllocation | null> {
   const result = await pool.query<PaymentAllocation>(
     `
-    SELECT payment_id, user_id, amount
+    SELECT payment_id, user_id, amount, created_at, updated_at
     FROM payment_allocations
     WHERE payment_id = $1 AND user_id = $2;
     `,

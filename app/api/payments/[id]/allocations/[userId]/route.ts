@@ -3,6 +3,7 @@ import { json, jsonNoContent, runRoute } from '@/lib/api/http'
 import { requirePositiveIntParam } from '@/lib/api/params'
 import { getSessionUserId } from '@/lib/api/session'
 import { BadRequestError, NotFoundError } from '@/lib/errors/domain'
+import { PaymentAllocationUpdateInput } from '@/lib/schemas/payment-allocation.schema'
 import {
   deletePaymentAllocation,
   getPaymentAllocation,
@@ -39,7 +40,7 @@ export async function PATCH(
     if (!targetUserId) {
       throw new BadRequestError('Invalid user id')
     }
-    const body = await parseJsonBody(request)
+    const body = await parseJsonBody<PaymentAllocationUpdateInput>(request)
     const row = await updatePaymentAllocation(userId, paymentId, targetUserId, body)
     if (!row) {
       throw new NotFoundError()

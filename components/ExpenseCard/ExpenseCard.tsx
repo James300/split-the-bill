@@ -1,11 +1,9 @@
 import { memo } from 'react'
 import Link from 'next/link'
 import Card from '@/components/Card/Card'
+import { IExpense } from '@/types/expense.interface'
 
-export interface IExpenseCardProps {
-  id: number
-  name: string
-}
+export interface IExpenseCardProps extends IExpense {}
 
 function ExpenseCard ({
   id,

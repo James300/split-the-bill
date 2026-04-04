@@ -3,6 +3,7 @@ import {
   deleteUserFromDatabase,
   getUserFromDatabaseById,
   getUsersFromDatabase,
+  getUsersFromDatabaseSince,
   updateUserInDatabase,
 } from '@/lib/db/user.repo'
 import {
@@ -16,6 +17,10 @@ import { ValidationError } from '@/lib/utils/validation/validation-error'
 
 export async function listUsers(): Promise<User[]> {
   return getUsersFromDatabase()
+}
+
+export async function listUsersSince(since: number): Promise<User[]> {
+  return getUsersFromDatabaseSince(since)
 }
 
 export async function getUserById(id: string): Promise<User | null> {

@@ -11,6 +11,7 @@ import {
   deletePaymentFromDatabase,
   getPaymentFromDatabaseById,
   getPaymentsFromDatabaseByExpenseId,
+  getPaymentsFromDatabaseByExpenseIdSince,
   updatePaymentInDatabase,
 } from '@/lib/db/payment.repo'
 import { requireExpenseMember } from '@/lib/access/expense-member'
@@ -68,6 +69,15 @@ export async function listPaymentsForExpense(
 ): Promise<Payment[]> {
   await requireExpenseMember(userId, expenseId)
   return getPaymentsFromDatabaseByExpenseId(expenseId)
+}
+
+export async function listPaymentsForExpenseSince(
+  userId: string,
+  expenseId: number,
+  since: number,
+): Promise<Payment[]> {
+  await requireExpenseMember(userId, expenseId)
+  return getPaymentsFromDatabaseByExpenseIdSince(expenseId, since)
 }
 
 export async function updatePayment(

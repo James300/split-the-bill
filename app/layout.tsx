@@ -41,7 +41,6 @@ export default function RootLayout({
                 {children}
               </main>
             {/* </OverlayProvider> */}
-            <Separator />
             {/* <FooterContainer /> */}
           </Providers>
         </div>

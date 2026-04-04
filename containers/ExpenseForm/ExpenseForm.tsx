@@ -10,7 +10,7 @@ import mapCurrencyNameToCode from '@/lib/utils/currency/mapCurrencyNameToCode'
 function ExpenseForm() {
   const [currency, setCurrency] = useState('')
   const [name, setName] = useState('')
-  const { errors, validate, clearError, clearAll } = useExpenseFormValidation()
+  const { errors, validate, clearError, clearAllErrors } = useExpenseFormValidation()
   const { saveExpense, isSaving, error } = useExpenseSave()
 
   const handleCurrencyChange = useCallback((currency: string) => {
@@ -28,7 +28,7 @@ function ExpenseForm() {
   }, [errors.name, clearError])
 
   const handleSubmit = useCallback(() => {
-    clearAll()
+    clearAllErrors()
 
     if (!validate(name, currency)) {
       return
@@ -38,7 +38,7 @@ function ExpenseForm() {
       name: name.trim(),
       currency: mapCurrencyNameToCode(currency),
     })
-  }, [currency, name, saveExpense, validate, clearAll])
+  }, [currency, name, saveExpense, validate, clearAllErrors])
 
   useEffect(() => {
     if (error) {

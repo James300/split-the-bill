@@ -11,8 +11,7 @@ export async function GET() {
 
     // TODO: Only list users that are members of the current user's expenses
     // const users = await listUsers()
-    // return json(users.map(mapUserRecord))
-    return json([])
+    return json({})
   })
 }
 

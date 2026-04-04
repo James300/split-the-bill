@@ -1,9 +1,9 @@
-export interface IUser {
+import { ITimestamped } from './common.interface'
+
+export interface IUser extends ITimestamped {
   id: string
   name: string
   email: string
-  createdAt: string
-  updatedAt: string
 }
 
 export interface ICreateUser extends Omit<IUser, 'id' | 'createdAt' | 'updatedAt'> {}

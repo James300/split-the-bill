@@ -7,7 +7,7 @@ function Header() {
     <header className="flex items-center justify-between w-full py-4 px-4 lg:px-24 max-w-screen-2xl mx-auto">
       <div className="flex items-center gap-4 w-full">
         <Link href="/">
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-2xl font-bold h-[36px]">
             Split The Bill
           </h1>
         </Link>

@@ -15,8 +15,8 @@ export function mapExpenseRecord(expense: Expense): IExpense {
     name: expense.name,
     currency: expense.currency,
     description: expense.description ?? undefined,
-    createdAt: expense.created_at.toISOString(),
-    updatedAt: expense.updated_at.toISOString(),
+    createdAt: expense.created_at.getTime(),
+    updatedAt: expense.updated_at.getTime(),
     userIds: expense.user_ids,
   }
 }

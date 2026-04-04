@@ -3,6 +3,7 @@ import {
   deleteSettlementFromDatabase,
   getSettlementFromDatabaseById,
   getSettlementsFromDatabaseByExpenseId,
+  getSettlementsFromDatabaseByExpenseIdSince,
   updateSettlementInDatabase,
 } from '@/lib/db/settlement.repo'
 import { requireExpenseMember } from '@/lib/access/expense-member'
@@ -52,6 +53,15 @@ export async function listSettlementsForExpense(
 ): Promise<Settlement[]> {
   await requireExpenseMember(userId, expenseId)
   return getSettlementsFromDatabaseByExpenseId(expenseId)
+}
+
+export async function listSettlementsForExpenseSince(
+  userId: string,
+  expenseId: number,
+  since: number,
+): Promise<Settlement[]> {
+  await requireExpenseMember(userId, expenseId)
+  return getSettlementsFromDatabaseByExpenseIdSince(expenseId, since)
 }
 
 export async function updateSettlement(

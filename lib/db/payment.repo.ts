@@ -10,9 +10,9 @@ export async function createPaymentInDatabase(
 ): Promise<Payment> {
   const result = await pool.query<Payment>(
     `
-    INSERT INTO payments (expense_id, paid_by_user_id, amount)
-    VALUES ($1, $2, $3)
-    RETURNING id, expense_id, paid_by_user_id, amount;
+    INSERT INTO payments (expense_id, paid_by_user_id, amount, created_at, updated_at)
+    VALUES ($1, $2, $3, NOW(), NOW())
+    RETURNING id, expense_id, paid_by_user_id, amount, created_at, updated_at;
     `,
     [input.expense_id, input.paid_by_user_id, input.amount],
   )
@@ -24,7 +24,7 @@ export async function getPaymentFromDatabaseById(
 ): Promise<Payment | null> {
   const result = await pool.query<Payment>(
     `
-    SELECT id, expense_id, paid_by_user_id, amount
+    SELECT id, expense_id, paid_by_user_id, amount, created_at, updated_at
     FROM payments
     WHERE id = $1;
     `,
@@ -38,12 +38,29 @@ export async function getPaymentsFromDatabaseByExpenseId(
 ): Promise<Payment[]> {
   const result = await pool.query<Payment>(
     `
-    SELECT id, expense_id, paid_by_user_id, amount
+    SELECT id, expense_id, paid_by_user_id, amount, created_at, updated_at
     FROM payments
     WHERE expense_id = $1
     ORDER BY id;
     `,
     [expenseId],
+  )
+  return result.rows
+}
+
+export async function getPaymentsFromDatabaseByExpenseIdSince(
+  expenseId: number,
+  since: number,
+): Promise<Payment[]> {
+  const sinceDate = new Date(since)
+  const result = await pool.query<Payment>(
+    `
+    SELECT id, expense_id, paid_by_user_id, amount, created_at, updated_at
+    FROM payments
+    WHERE expense_id = $1 AND updated_at > $2
+    ORDER BY updated_at DESC;
+    `,
+    [expenseId, sinceDate],
   )
   return result.rows
 }
@@ -69,6 +86,7 @@ export async function updatePaymentInDatabase(
     return getPaymentFromDatabaseById(id)
   }
 
+  fields.push(`updated_at = NOW()`)
   values.push(id)
 
   const result = await pool.query<Payment>(
@@ -76,7 +94,7 @@ export async function updatePaymentInDatabase(
     UPDATE payments
     SET ${fields.join(', ')}
     WHERE id = $${i}
-    RETURNING id, expense_id, paid_by_user_id, amount;
+    RETURNING id, expense_id, paid_by_user_id, amount, created_at, updated_at;
     `,
     values,
   )

@@ -1,10 +1,9 @@
-export interface IExpense {
-  id: number
+import { IEntity } from './common.interface'
+
+export interface IExpense extends IEntity {
   name: string
   currency: string
   description?: string
-  createdAt: string
-  updatedAt: string
   userIds: string[]
 }
 

@@ -12,6 +12,15 @@ export async function getUsersFromDatabase(): Promise<User[]> {
   return result.rows
 }
 
+export async function getUsersFromDatabaseSince(since: number): Promise<User[]> {
+  const sinceDate = new Date(since)
+  const result = await pool.query<User>(
+    `SELECT id, name, email, created_at, updated_at FROM "user" WHERE updated_at > $1 ORDER BY updated_at DESC`,
+    [sinceDate],
+  )
+  return result.rows
+}
+
 export async function getUsersFromDatabaseByIds(ids: string[]): Promise<User[]> {
   if (ids.length === 0) {
     return []
@@ -20,8 +29,7 @@ export async function getUsersFromDatabaseByIds(ids: string[]): Promise<User[]> 
     `SELECT id, name, email, created_at, updated_at FROM "user" WHERE id = ANY($1::text[])`,
     [ids],
   )
-  const byId = new Map(result.rows.map((row) => [row.id, row]))
-  return ids.map((id) => byId.get(id)).filter((u): u is User => u !== undefined)
+  return result.rows
 }
 
 export async function getUserFromDatabaseById(id: string): Promise<User | null> {

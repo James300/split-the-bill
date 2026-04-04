@@ -1,9 +1,13 @@
-import type {
-  Settlement,
-  SettlementCreateInput,
-  SettlementUpdateInput,
-} from '@/lib/schemas/settlement.schema'
+import { IEntity } from './common.interface'
 
-export type ISettlement = Settlement
-export type ISettlementCreate = SettlementCreateInput
-export type ISettlementUpdate = SettlementUpdateInput
+export interface ISettlement extends IEntity {
+  expenseId: number
+  payerUserId: string
+  payeeUserId: string
+  amount: number
+  date: Date
+}
+
+export interface ISettlementCreate extends Omit<ISettlement, 'id' | 'createdAt' | 'updatedAt'> {}
+
+export interface ISettlementUpdate extends Partial<Omit<ISettlement, 'id' | 'createdAt' | 'updatedAt'>> {}

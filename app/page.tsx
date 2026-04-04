@@ -1,14 +1,15 @@
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/server'
 import Page from '@/components/Page/Page'
 import ExpensesList from '@/components/ExpensesList/ExpensesList'
 import Button from '@/components/Button';
-import { headers } from 'next/headers'
+import type { IExpense } from '@/types/expense.interface';
 
-async function getExpenses() {
+async function getExpenses(): Promise<Record<number, IExpense>> {
   const cookieHeader = (await headers()).get('cookie')
-  const response = await fetch('http://localhost:3000/api/expenses', {
+  const response = await fetch('http://localhost:3000/api/expenses/delta?since=0', {
     headers: {
       ...(cookieHeader ? { cookie: cookieHeader } : {}),
     },
@@ -18,7 +19,7 @@ async function getExpenses() {
     throw new Error('Failed to fetch expenses. Please try again.')
   }
 
-  return response.json()
+  return response.json() as Promise<Record<number, IExpense>>
 }
 
 export default async function Home() {
@@ -28,10 +29,15 @@ export default async function Home() {
   }
 
   const expenses = await getExpenses()
+  if (!expenses) {
+    return null
+  }
+
+  const expensesArray = Object.values(expenses)
 
   return (
     <Page title='Expenses'>
-      <ExpensesList expenses={expenses} />
+      <ExpensesList expenses={expensesArray} />
       <div className='flex justify-center w-full mt-auto'>
         <Link href='/expenses/new'>
           <Button>Add New Expense</Button>

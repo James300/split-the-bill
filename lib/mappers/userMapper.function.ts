@@ -13,8 +13,8 @@ export function mapUserRecord(user: User): IUser {
     id: user.id,
     name: user.name,
     email: user.email,
-    createdAt: user.created_at.toISOString(),
-    updatedAt: user.updated_at.toISOString(),
+    createdAt: user.created_at.getTime(),
+    updatedAt: user.updated_at.getTime(),
   }
 }
 

@@ -6,6 +6,7 @@ import {
   mapExpenseRecord,
 } from '@/lib/mappers/expenseMapper.function'
 import { createExpense, getExpensesByUserId } from '@/lib/services/expense.service'
+import { entityArrayToMap } from '@/lib/utils/entityArrayToMap'
 import type { ICreateExpense } from '@/types/expense.interface'
 
 export async function POST(request: Request) {
@@ -21,6 +22,6 @@ export async function GET() {
   return runRoute(async () => {
     const userId = await getSessionUserId()
     const expenses = await getExpensesByUserId(userId)
-    return json(expenses.map(mapExpenseRecord))
+    return json(entityArrayToMap(expenses.map(mapExpenseRecord)))
   })
 }

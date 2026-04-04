@@ -54,6 +54,23 @@ export async function getSettlementsFromDatabaseByExpenseId(
   return result.rows
 }
 
+export async function getSettlementsFromDatabaseByExpenseIdSince(
+  expenseId: number,
+  since: number,
+): Promise<Settlement[]> {
+  const sinceDate = new Date(since)
+  const result = await pool.query<Settlement>(
+    `
+    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at
+    FROM settlement
+    WHERE expense_id = $1 AND updated_at > $2
+    ORDER BY updated_at DESC;
+    `,
+    [expenseId, sinceDate],
+  )
+  return result.rows
+}
+
 export async function updateSettlementInDatabase(
   id: number,
   patch: SettlementUpdateInput,

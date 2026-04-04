@@ -170,6 +170,44 @@ export async function getExpensesFromDatabaseByUserId(
   }
 }
 
+export async function getExpensesFromDatabaseByUserIdSince(
+  userId: string,
+  since: number,
+): Promise<Expense[]> {
+  const client = await pool.connect()
+  const sinceDate = new Date(since)
+
+  try {
+    const result = await client.query<Expense>(
+      `
+      SELECT
+        e.id,
+        e.name,
+        e.description,
+        e.currency,
+        e.created_at,
+        e.updated_at,
+        COALESCE(
+          (SELECT array_agg(ue2.user_id ORDER BY ue2.user_id)
+           FROM user_expense ue2
+           WHERE ue2.expense_id = e.id),
+          '{}'
+        ) AS user_ids
+      FROM expense e
+      JOIN user_expense ue ON e.id = ue.expense_id
+      WHERE ue.user_id = $1 AND e.updated_at > $2
+      ORDER BY e.updated_at DESC
+      LIMIT 100;
+      `,
+      [userId, sinceDate],
+    )
+
+    return result.rows
+  } finally {
+    client.release()
+  }
+}
+
 export async function updateExpenseInDatabase(
   userId: string,
   expenseId: number,
