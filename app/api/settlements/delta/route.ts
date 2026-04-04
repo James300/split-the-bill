@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       return json({ error: 'Invalid since parameter: must be a number' }, { status: 400 })
     }
     
-    const settlements = await listSettlementsForExpenseSince(userId, expenseId, since)
+    const settlements = await listSettlementsForExpenseSince(userId, expenseId, since, true)
     return json(entityArrayToMap(settlements.map(mapSettlementRecord)))
   })
 }

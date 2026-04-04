@@ -12,7 +12,7 @@ export async function createPaymentInDatabase(
     `
     INSERT INTO payments (expense_id, paid_by_user_id, amount, created_at, updated_at)
     VALUES ($1, $2, $3, NOW(), NOW())
-    RETURNING id, expense_id, paid_by_user_id, amount, created_at, updated_at;
+    RETURNING id, expense_id, paid_by_user_id, amount, created_at, updated_at, deleted_at;
     `,
     [input.expense_id, input.paid_by_user_id, input.amount],
   )
@@ -24,9 +24,9 @@ export async function getPaymentFromDatabaseById(
 ): Promise<Payment | null> {
   const result = await pool.query<Payment>(
     `
-    SELECT id, expense_id, paid_by_user_id, amount, created_at, updated_at
+    SELECT id, expense_id, paid_by_user_id, amount, created_at, updated_at, deleted_at
     FROM payments
-    WHERE id = $1;
+    WHERE id = $1 AND deleted_at IS NULL;
     `,
     [id],
   )
@@ -38,9 +38,9 @@ export async function getPaymentsFromDatabaseByExpenseId(
 ): Promise<Payment[]> {
   const result = await pool.query<Payment>(
     `
-    SELECT id, expense_id, paid_by_user_id, amount, created_at, updated_at
+    SELECT id, expense_id, paid_by_user_id, amount, created_at, updated_at, deleted_at
     FROM payments
-    WHERE expense_id = $1
+    WHERE expense_id = $1 AND deleted_at IS NULL
     ORDER BY id;
     `,
     [expenseId],
@@ -55,7 +55,7 @@ export async function getPaymentsFromDatabaseByExpenseIdSince(
   const sinceDate = new Date(since)
   const result = await pool.query<Payment>(
     `
-    SELECT id, expense_id, paid_by_user_id, amount, created_at, updated_at
+    SELECT id, expense_id, paid_by_user_id, amount, created_at, updated_at, deleted_at
     FROM payments
     WHERE expense_id = $1 AND updated_at > $2
     ORDER BY updated_at DESC;
@@ -94,7 +94,7 @@ export async function updatePaymentInDatabase(
     UPDATE payments
     SET ${fields.join(', ')}
     WHERE id = $${i}
-    RETURNING id, expense_id, paid_by_user_id, amount, created_at, updated_at;
+    RETURNING id, expense_id, paid_by_user_id, amount, created_at, updated_at, deleted_at;
     `,
     values,
   )
@@ -103,17 +103,9 @@ export async function updatePaymentInDatabase(
 }
 
 export async function deletePaymentFromDatabase(id: number): Promise<boolean> {
-  const client = await pool.connect()
-  try {
-    await client.query('BEGIN')
-    await client.query(`DELETE FROM payment_allocations WHERE payment_id = $1`, [id])
-    const result = await client.query(`DELETE FROM payments WHERE id = $1`, [id])
-    await client.query('COMMIT')
-    return (result.rowCount ?? 0) > 0
-  } catch (err) {
-    await client.query('ROLLBACK')
-    throw err
-  } finally {
-    client.release()
-  }
+  const result = await pool.query(
+    `UPDATE payments SET deleted_at = NOW() WHERE id = $1`,
+    [id],
+  )
+  return (result.rowCount ?? 0) > 0
 }

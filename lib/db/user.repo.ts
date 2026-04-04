@@ -7,7 +7,7 @@ import {
 
 export async function getUsersFromDatabase(): Promise<User[]> {
   const result = await pool.query<User>(
-    `SELECT id, name, email, created_at, updated_at FROM "user" ORDER BY name`,
+    `SELECT id, name, email, created_at, updated_at, deleted_at FROM "user" WHERE deleted_at IS NULL ORDER BY name`,
   )
   return result.rows
 }
@@ -15,7 +15,7 @@ export async function getUsersFromDatabase(): Promise<User[]> {
 export async function getUsersFromDatabaseSince(since: number): Promise<User[]> {
   const sinceDate = new Date(since)
   const result = await pool.query<User>(
-    `SELECT id, name, email, created_at, updated_at FROM "user" WHERE updated_at > $1 ORDER BY updated_at DESC`,
+    `SELECT id, name, email, created_at, updated_at, deleted_at FROM "user" WHERE updated_at > $1 ORDER BY updated_at DESC`,
     [sinceDate],
   )
   return result.rows
@@ -26,7 +26,7 @@ export async function getUsersFromDatabaseByIds(ids: string[]): Promise<User[]> 
     return []
   }
   const result = await pool.query<User>(
-    `SELECT id, name, email, created_at, updated_at FROM "user" WHERE id = ANY($1::text[])`,
+    `SELECT id, name, email, created_at, updated_at, deleted_at FROM "user" WHERE id = ANY($1::text[]) AND deleted_at IS NULL`,
     [ids],
   )
   return result.rows
@@ -34,7 +34,7 @@ export async function getUsersFromDatabaseByIds(ids: string[]): Promise<User[]> 
 
 export async function getUserFromDatabaseById(id: string): Promise<User | null> {
   const result = await pool.query<User>(
-    `SELECT id, name, email, created_at, updated_at FROM "user" WHERE id = $1`,
+    `SELECT id, name, email, created_at, updated_at, deleted_at FROM "user" WHERE id = $1 AND deleted_at IS NULL`,
     [id],
   )
   return result.rows[0] ?? null
@@ -45,7 +45,7 @@ export async function createUserInDatabase(input: UserCreateInput): Promise<User
     `
     INSERT INTO "user" (name, email)
     VALUES ($1, $2)
-    RETURNING id, name, email, created_at, updated_at;
+    RETURNING id, name, email, created_at, updated_at, deleted_at;
     `,
     [input.name, input.email],
   )
@@ -81,7 +81,7 @@ export async function updateUserInDatabase(
     UPDATE "user"
     SET ${fields.join(', ')}
     WHERE id = $${i}
-    RETURNING id, name, email, created_at, updated_at;
+    RETURNING id, name, email, created_at, updated_at, deleted_at;
     `,
     values,
   )
@@ -90,6 +90,9 @@ export async function updateUserInDatabase(
 }
 
 export async function deleteUserFromDatabase(id: string): Promise<boolean> {
-  const result = await pool.query(`DELETE FROM "user" WHERE id = $1`, [id])
+  const result = await pool.query(
+    `UPDATE "user" SET deleted_at = NOW() WHERE id = $1`,
+    [id],
+  )
   return (result.rowCount ?? 0) > 0
 }

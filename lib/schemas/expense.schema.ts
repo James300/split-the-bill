@@ -8,6 +8,7 @@ export const ExpenseSchema = z.object({
   currency: CurrencySchema,
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
+  deleted_at: z.coerce.date().nullish(),
   user_ids: z.array(z.string().min(1)),
 })
 

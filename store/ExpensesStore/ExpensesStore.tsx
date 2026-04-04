@@ -1,68 +1,113 @@
 'use client'
 
 import { useCallback } from 'react'
-import { atom, useAtom, useAtomValue } from 'jotai'
-import { selectAtom  } from 'jotai/utils'
-import { atomFamily } from 'jotai-family'
+import { useAtom, useAtomValue } from 'jotai'
 import type { IExpense } from '@/types/expense.interface'
-import { getMaxUpdatedAt } from '@/lib/utils/getMaxUpdatedAt.function'
+import { 
+  createBaseStore, 
+  createDataAtom, 
+  createLoadingAtom, 
+  createErrorAtom, 
+  createLastFetchedAtAtom, 
+  createEntityFamily,
+  getMaxUpdatedAt 
+} from '../baseStore'
 
-type ExpensesMap = Record<string, IExpense>
+const expenseStoreAtom = createBaseStore<IExpense>('split-the-bill-expenses')
 
-interface ExpensesStore {
-  expenses: ExpensesMap
-  isLoading: boolean,
-  isError: boolean,
-  lastFetchedAt: number
-}
+const expensesAtom = createDataAtom(expenseStoreAtom)
+const loadingAtom = createLoadingAtom(expenseStoreAtom)
+const errorAtom = createErrorAtom(expenseStoreAtom)
+const lastFetchedAtAtom = createLastFetchedAtAtom(expenseStoreAtom)
 
-const initialExpensesState = {
-  expenses: {},
-  isLoading: false,
-  isError: false,
-  lastFetchedAt: 0,
-}
-
-const expensesStoreAtom = atom<ExpensesStore>(initialExpensesState)
-
-const expensesAtom = selectAtom(expensesStoreAtom, (state) => state.expenses)
-
-const lastFetchedAtAtom = selectAtom(expensesStoreAtom, (state) => state.lastFetchedAt)
-
-const expenseFamily = atomFamily((id: string) => {
-  return atom((get) => get(expensesAtom)[id])
-})
+const expenseFamily = createEntityFamily(expensesAtom)
 
 export const useExpenseStore = () => {
-  const [store, setStore] = useAtom(expensesStoreAtom)
+  const [store, setStore] = useAtom(expenseStoreAtom)
 
-  const setLastFetchedAt = useCallback((newLastFetchedAt: number) => {
-    return setStore((prev) => ({
-      ...prev,
-      lastFetchedAt: newLastFetchedAt
-    }))
-  }, [])
+  const setLoading = useCallback((isLoading: boolean) => {
+    setStore((prev) => ({ ...prev, isLoading }))
+  }, [setStore])
 
-  const setExpenses = useCallback((expenses: ExpensesMap) => {
+  const setError = useCallback((isError: boolean) => {
+    setStore((prev) => ({ ...prev, isError }))
+  }, [setStore])
+
+  const setLastFetchedAt = useCallback((lastFetchedAt: number) => {
+    setStore((prev) => ({ ...prev, lastFetchedAt }))
+  }, [setStore])
+
+  const setExpenses = useCallback((expenses: Record<string, IExpense>) => {
     const expensesArray = Object.values(expenses)
-    return setStore((prev) => ({
+    setStore((prev) => ({
       ...prev,
-      expenses,
+      data: expenses,
       isLoading: false,
       isError: false,
-      lastFetchedAt: getMaxUpdatedAt(expensesArray),
+      lastFetchedAt: Math.max(prev.lastFetchedAt, getMaxUpdatedAt(expensesArray)),
     }))
-  }, [])
+  }, [setStore])
 
-  return { store, setLastFetchedAt, setExpenses }
+  const addExpense = useCallback((expense: IExpense) => {
+    setStore((prev) => ({
+      ...prev,
+      data: { ...prev.data, [expense.id]: expense },
+      isLoading: false,
+      isError: false,
+      lastFetchedAt: Math.max(prev.lastFetchedAt, expense.updatedAt),
+    }))
+  }, [setStore])
+
+  const updateExpense = useCallback((id: string, updates: Partial<IExpense>) => {
+    setStore((prev) => {
+      const existingExpense = prev.data[id]
+      if (!existingExpense) return prev
+
+      const updatedExpense = { ...existingExpense, ...updates, updatedAt: Date.now() }
+      return {
+        ...prev,
+        data: { ...prev.data, [id]: updatedExpense },
+      }
+    })
+  }, [setStore])
+
+  const removeExpense = useCallback((id: string) => {
+    setStore((prev) => {
+      const { [id]: removed, ...rest } = prev.data
+      return { ...prev, data: rest }
+    })
+  }, [setStore])
+
+  return {
+    store,
+    storeAtom: expenseStoreAtom,
+    setLoading,
+    setError,
+    setLastFetchedAt,
+    setExpenses: setExpenses,
+    addExpense,
+    updateExpense,
+    removeExpense,
+  }
 }
 
 export const useExpenses = () => {
   const expenses = useAtomValue(expensesAtom)
+  const isLoading = useAtomValue(loadingAtom)
+  const isError = useAtomValue(errorAtom)
+  const lastFetchedAt = useAtomValue(lastFetchedAtAtom)
 
-  const { setExpenses } = useExpenseStore()
+  const { setExpenses, setLoading, setError } = useExpenseStore()
 
-  return { expenses, setExpenses }
+  return { 
+    expenses, 
+    isLoading, 
+    isError, 
+    lastFetchedAt,
+    setExpenses,
+    setLoading,
+    setError,
+  }
 }
 
 export const useExpense = (id: string) => {

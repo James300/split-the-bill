@@ -12,7 +12,7 @@ export async function createSettlementInDatabase(
     `
     INSERT INTO settlement (expense_id, payer_user_id, payee_user_id, amount, date)
     VALUES ($1, $2, $3, $4, COALESCE($5, NOW()::date))
-    RETURNING id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at;
+    RETURNING id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at;
     `,
     [
       input.expense_id,
@@ -30,9 +30,9 @@ export async function getSettlementFromDatabaseById(
 ): Promise<Settlement | null> {
   const result = await pool.query<Settlement>(
     `
-    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at
+    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at
     FROM settlement
-    WHERE id = $1;
+    WHERE id = $1 AND deleted_at IS NULL;
     `,
     [id],
   )
@@ -44,9 +44,9 @@ export async function getSettlementsFromDatabaseByExpenseId(
 ): Promise<Settlement[]> {
   const result = await pool.query<Settlement>(
     `
-    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at
+    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at
     FROM settlement
-    WHERE expense_id = $1
+    WHERE expense_id = $1 AND deleted_at IS NULL
     ORDER BY date DESC, id;
     `,
     [expenseId],
@@ -61,7 +61,7 @@ export async function getSettlementsFromDatabaseByExpenseIdSince(
   const sinceDate = new Date(since)
   const result = await pool.query<Settlement>(
     `
-    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at
+    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at
     FROM settlement
     WHERE expense_id = $1 AND updated_at > $2
     ORDER BY updated_at DESC;
@@ -108,7 +108,7 @@ export async function updateSettlementInDatabase(
     UPDATE settlement
     SET ${fields.join(', ')}
     WHERE id = $${i}
-    RETURNING id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at;
+    RETURNING id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at;
     `,
     values,
   )
@@ -117,6 +117,9 @@ export async function updateSettlementInDatabase(
 }
 
 export async function deleteSettlementFromDatabase(id: number): Promise<boolean> {
-  const result = await pool.query(`DELETE FROM settlement WHERE id = $1`, [id])
+  const result = await pool.query(
+    `UPDATE settlement SET deleted_at = NOW() WHERE id = $1`,
+    [id],
+  )
   return (result.rowCount ?? 0) > 0
 }

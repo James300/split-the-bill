@@ -9,6 +9,7 @@ export const SettlementSchema = z.object({
   date: z.coerce.date(),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
+  deleted_at: z.coerce.date().nullish(),
 })
 
 export type Settlement = z.infer<typeof SettlementSchema>

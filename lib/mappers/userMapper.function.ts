@@ -1,5 +1,6 @@
 import { User, UserCreateInput, UserPublic } from '@/lib/schemas/user.schema'
 import { ICreateUser, IUser, IUserPublic } from '@/types/user.interface'
+import { createNotFoundEntity } from '@/lib/utils/createNotFoundEntity'
 
 export function mapUserInput(user: ICreateUser): UserCreateInput {
   return {
@@ -9,6 +10,10 @@ export function mapUserInput(user: ICreateUser): UserCreateInput {
 }
 
 export function mapUserRecord(user: User): IUser {
+  if (user.deleted_at) {
+    return createNotFoundEntity(user.id) as IUser
+  }
+
   return {
     id: user.id,
     name: user.name,

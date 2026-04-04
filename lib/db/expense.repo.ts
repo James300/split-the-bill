@@ -76,6 +76,7 @@ async function getExpenseRowById(
       e.currency,
       e.created_at,
       e.updated_at,
+      e.deleted_at,
       COALESCE(
         (SELECT array_agg(ue2.user_id ORDER BY ue2.user_id)
          FROM user_expense ue2
@@ -111,6 +112,7 @@ export async function getExpenseFromDatabaseById(
         e.currency,
         e.created_at,
         e.updated_at,
+        e.deleted_at,
         COALESCE(
           (SELECT array_agg(ue2.user_id ORDER BY ue2.user_id)
            FROM user_expense ue2
@@ -119,7 +121,7 @@ export async function getExpenseFromDatabaseById(
         ) AS user_ids
       FROM expense e
       JOIN user_expense ue ON e.id = ue.expense_id
-      WHERE ue.user_id = $1 AND e.id = $2
+      WHERE ue.user_id = $1 AND e.id = $2 AND e.deleted_at IS NULL
       `,
       [userId, expenseId],
     )
@@ -149,6 +151,7 @@ export async function getExpensesFromDatabaseByUserId(
         e.currency,
         e.created_at,
         e.updated_at,
+        e.deleted_at,
         COALESCE(
           (SELECT array_agg(ue2.user_id ORDER BY ue2.user_id)
            FROM user_expense ue2
@@ -157,7 +160,7 @@ export async function getExpensesFromDatabaseByUserId(
         ) AS user_ids
       FROM expense e
       JOIN user_expense ue ON e.id = ue.expense_id
-      WHERE ue.user_id = $1
+      WHERE ue.user_id = $1 AND e.deleted_at IS NULL
       ORDER BY e.updated_at DESC
       LIMIT 100;
       `,
@@ -187,6 +190,7 @@ export async function getExpensesFromDatabaseByUserIdSince(
         e.currency,
         e.created_at,
         e.updated_at,
+        e.deleted_at,
         COALESCE(
           (SELECT array_agg(ue2.user_id ORDER BY ue2.user_id)
            FROM user_expense ue2
@@ -266,8 +270,6 @@ export async function deleteExpenseFromDatabase(
   const client = await pool.connect()
 
   try {
-    await client.query('BEGIN')
-
     const access = await client.query(
       `SELECT 1 FROM user_expense WHERE user_id = $1 AND expense_id = $2`,
       [userId, expenseId],
@@ -276,16 +278,7 @@ export async function deleteExpenseFromDatabase(
       throw new NotFoundError()
     }
 
-    await client.query(`DELETE FROM payment_allocations WHERE payment_id IN (SELECT id FROM payments WHERE expense_id = $1)`, [expenseId])
-    await client.query(`DELETE FROM payments WHERE expense_id = $1`, [expenseId])
-    await client.query(`DELETE FROM settlement WHERE expense_id = $1`, [expenseId])
-    await client.query(`DELETE FROM user_expense WHERE expense_id = $1`, [expenseId])
-    await client.query(`DELETE FROM expense WHERE id = $1`, [expenseId])
-
-    await client.query('COMMIT')
-  } catch (err) {
-    await client.query('ROLLBACK')
-    throw err
+    await client.query(`UPDATE expense SET deleted_at = NOW() WHERE id = $1`, [expenseId])
   } finally {
     client.release()
   }

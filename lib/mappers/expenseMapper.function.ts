@@ -1,5 +1,6 @@
 import { Expense, ExpenseCreateInput, ExpenseUserOwed } from '@/lib/schemas/expense.schema'
 import { ICreateExpense, IExpense, IExpenseUserOwed } from '@/types/expense.interface'
+import { createNotFoundEntity } from '@/lib/utils/createNotFoundEntity'
 
 export function mapExpenseInput(expense: ICreateExpense): ExpenseCreateInput {
   return {
@@ -10,6 +11,10 @@ export function mapExpenseInput(expense: ICreateExpense): ExpenseCreateInput {
 }
 
 export function mapExpenseRecord(expense: Expense): IExpense {
+  if (expense.deleted_at) {
+    return createNotFoundEntity(expense.id) as IExpense
+  }
+
   return {
     id: expense.id,
     name: expense.name,

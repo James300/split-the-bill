@@ -7,6 +7,7 @@ export const PaymentSchema = z.object({
   amount: z.number().int().positive(),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
+  deleted_at: z.coerce.date().nullish(),
 })
 
 export type Payment = z.infer<typeof PaymentSchema>

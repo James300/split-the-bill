@@ -1,6 +1,7 @@
 import { Payment, PaymentCreateInput } from '@/lib/schemas/payment.schema'
 import { PaymentAllocation, PaymentAllocationCreateInput } from '@/lib/schemas/payment-allocation.schema'
 import { IPayment, IPaymentCreate, IPaymentAllocation, IPaymentAllocationCreate } from '@/types/payment.interface'
+import { createNotFoundEntity } from '@/lib/utils/createNotFoundEntity'
 
 export function mapPaymentInput(payment: IPaymentCreate): PaymentCreateInput {
   return {
@@ -11,6 +12,10 @@ export function mapPaymentInput(payment: IPaymentCreate): PaymentCreateInput {
 }
 
 export function mapPaymentRecord(payment: Payment): IPayment {
+  if (payment.deleted_at) {
+    return createNotFoundEntity(payment.id) as IPayment
+  }
+
   return {
     id: payment.id,
     expenseId: payment.expense_id,
@@ -30,6 +35,10 @@ export function mapPaymentAllocationInput(allocation: IPaymentAllocationCreate):
 }
 
 export function mapPaymentAllocationRecord(allocation: PaymentAllocation): IPaymentAllocation {
+  if (allocation.deleted_at) {
+    return createNotFoundEntity(allocation.id) as IPaymentAllocation
+  }
+
   return {
     id: allocation.id,
     paymentId: allocation.payment_id,

@@ -6,6 +6,7 @@ export const UserSchema = z.object({
   email: z.email(),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
+  deleted_at: z.coerce.date().nullish(),
 })
 
 export type User = z.infer<typeof UserSchema>
