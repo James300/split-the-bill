@@ -120,7 +120,7 @@ if (!connectionString) {
     }
   } catch (error) {
     console.error('Database migration failed.')
-    console.error(error instanceof Error ? error.message : 'Unexpected migration error.')
+    console.error(error)
     process.exitCode = 1
   } finally {
     if (client && lockAcquired) {

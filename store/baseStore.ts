@@ -16,8 +16,10 @@ export function createBaseStore<T>(storageKey: string, initialData: Record<strin
     lastFetchedAt: 0,
   }
 
+  // Use the same initial state on the server and the first client render, then
+  // let atomWithStorage hydrate persisted data after mount.
   const storeAtom = atomWithStorage<BaseStore<T>>(storageKey, initialStore, undefined, {
-    getOnInit: true,
+    getOnInit: false,
   })
 
   return storeAtom

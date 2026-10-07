@@ -3,6 +3,7 @@ import {
   createExpenseInDatabase,
   deleteExpenseFromDatabase,
   getExpenseFromDatabaseById,
+  getExpenseMembersFromDatabase,
   getExpensesFromDatabaseByUserId,
   getExpensesFromDatabaseByUserIdSince,
   removeUserFromExpenseInDatabase,
@@ -64,6 +65,10 @@ export async function getExpenseById(
   expenseId: number,
 ): Promise<Expense> {
   return getExpenseFromDatabaseById(userId, expenseId)
+}
+
+export async function getExpenseMembers(userId: string, expenseId: number) {
+  return getExpenseMembersFromDatabase(userId, expenseId)
 }
 
 export async function getExpensesByUserId(userId: string): Promise<Expense[]> {

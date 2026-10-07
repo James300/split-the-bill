@@ -19,3 +19,4 @@ expense_invitation - This stores hashed, expiring and revocable share-link invit
 View the schemas in ./lib/schemas to see the table structure
 
 Before using expense invitations, apply ./lib/db/migrations/0001_expense_invitations.sql to the database.
+Expense creator identity is stored in expense.created_by_user_id. Apply ./lib/db/migrations/0002_expense_creator.sql before using creator-only member management. Existing expenses have no creator recorded and keep removal disabled unless creator identity can be established separately.

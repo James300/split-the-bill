@@ -5,6 +5,7 @@ export interface IExpense extends IEntity {
   currency: string
   description?: string
   userIds: string[]
+  createdByUserId?: string | null
 }
 
 export interface ICreateExpense extends Omit<

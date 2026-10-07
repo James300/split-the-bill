@@ -25,6 +25,9 @@ Prefer shared UI components from `components/` over raw HTML controls or one-off
 - After creating an invitation, copy its join link to the creator's clipboard and show one success toast. If clipboard access fails, keep the link visible in a selectable field and clearly report that copying failed. Use a shared toast ID for invitation create and revoke feedback so only one invitation toast is visible at a time. Do not add separate copy or native-share buttons; the selectable field remains available for manual copying.
 - Joining through a link must be idempotent: following the same valid invitation again must not create duplicate membership rows.
 - Member add/remove and leave behavior must preserve understandable history and balances. Never silently delete past transactions when membership changes.
+- The expense creator is recorded in `expense.created_by_user_id`; only that creator can remove another member. Removal is blocked if the member has any active payment, payment allocation, or settlement history. Never remove the creator or erase ledger history as part of membership changes. Existing expenses without a recorded creator must not offer removal controls.
+- The expense title row includes a separate people icon that opens a member list dialog. Show names and identify the creator and current user; show removal controls only to the recorded creator.
+- Keep already-loaded member rows visible during refreshes; show a loading placeholder only when no members are currently available, and render newly loaded members when the request completes.
 
 ### Expenses and payments
 
@@ -49,6 +52,7 @@ Prefer shared UI components from `components/` over raw HTML controls or one-off
 - Return a not-found response for inaccessible expense data so endpoints do not reveal whether another user's expense exists.
 - Validate request data with the existing Zod schemas and keep server-side business validation authoritative. Never trust client-supplied payer, participant, amount, or membership claims without checking them.
 - Avoid exposing private account fields to expense members; display only the profile information needed to identify participants.
+- Resolve member display names from the matching Neon Auth profile (`neon_auth.user`). The legacy application `user` table has a separate integer ID and must not be joined to `user_expense.user_id` for identities.
 - Keep transaction creation and its allocations atomic. If a multi-row operation fails, it must not leave a partial payment or membership behind.
 
 ## Core product flows
@@ -68,6 +72,7 @@ The implementation plan and verification notes for these flows live in [TODO.rea
 
 - Keep product rules in server-side services or domain helpers and reuse them from route handlers. Route presence alone is not proof that a user flow works.
 - Preserve the existing Next.js App Router, TypeScript, Zod, repository/service, and API patterns unless there is a clear reason to change them.
+- Keep server and first-client renders consistent when using browser-persisted state. Hydrate local storage after mount instead of reading it to determine the initial server-rendered value.
 - Prefer `async`/`await` for asynchronous control flow. Avoid `.then()`/`.catch()` promise chains when the same work can be expressed clearly with `try`/`catch`/`finally`.
 - Keep names and API semantics consistent with the schema: expenses contain payments; payment allocations identify who shares a payment; settlements record transfers between users.
 - Document material behavior changes here and update TODO status and acceptance criteria in the same change.

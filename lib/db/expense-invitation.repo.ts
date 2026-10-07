@@ -112,9 +112,9 @@ export async function getExpenseInvitationPreviewFromDatabase(
   }
 
   const memberResult = await pool.query<{ id: string; name: string }>(
-    `SELECT ue.user_id AS id, COALESCE(NULLIF(u.name, ''), 'Member') AS name
+    `SELECT ue.user_id::text AS id, COALESCE(NULLIF(u.name, ''), 'Member') AS name
      FROM user_expense ue
-     LEFT JOIN "user" u ON u.id = ue.user_id AND u.deleted_at IS NULL
+     LEFT JOIN neon_auth."user" u ON u.id::text = ue.user_id::text
      WHERE ue.expense_id = $1
      ORDER BY name, ue.user_id`,
     [invitation.expense_id],
@@ -152,14 +152,19 @@ export async function joinExpenseWithInvitationInDatabase(
       throw new NotFoundError()
     }
 
-    await client.query(
-      `INSERT INTO user_expense (user_id, expense_id)
-       SELECT $1, $2
-       WHERE NOT EXISTS (
+    const membershipResult = await client.query<{ exists: boolean }>(
+      `SELECT EXISTS (
          SELECT 1 FROM user_expense WHERE user_id = $1 AND expense_id = $2
-       )`,
+       ) AS exists`,
       [userId, invitation.expense_id],
     )
+
+    if (!membershipResult.rows[0]?.exists) {
+      await client.query(
+        `INSERT INTO user_expense (user_id, expense_id) VALUES ($1, $2)`,
+        [userId, invitation.expense_id],
+      )
+    }
 
     await client.query('COMMIT')
     return invitation.expense_id

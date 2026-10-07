@@ -132,9 +132,11 @@ Done when every expense member can review repayments and reconcile them with the
 
 ## Additional core work
 
-- [ ] Build the expense detail screen and member list; it is currently a placeholder. This is the home for payment, balance, and settlement flows.
+- [x] Add a member list dialog to the expense title row; the creator can remove members with no active ledger history. (Runtime unverified.)
+- [ ] Apply `lib/db/migrations/0002_expense_creator.sql` with `npm run db:migrate` before deploying this change; existing expenses retain unknown creator status.
+- [ ] Build the expense detail screen for payment, balance, and settlement flows; it is currently a placeholder.
 - [ ] Define safe edit/delete rules for expenses, payments, allocations, and settlements, including the effect on other members' balances and history.
-- [ ] Define membership removal/leave behavior, including what happens when a member has unsettled balances or existing transaction history.
+- [x] Define membership removal behavior: only the recorded creator may remove another member, and removal is blocked when active payment, allocation, or settlement history exists. Existing expenses without creator metadata cannot offer removal yet.
 - [ ] Add server-side cross-record validation and database constraints for membership, allocation totals, and valid settlement directions.
 - [ ] Decide whether trip expenses need receipt/photo attachments, dates, categories, or notes. These help trip tracking but can follow the ledger MVP.
 - [ ] Verify accessible mobile layout, touch targets, keyboard behavior, offline/network failure recovery, and currency formatting.

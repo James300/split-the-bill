@@ -5,7 +5,6 @@ import { Share2, X } from 'lucide-react'
 import ExpenseInvitationManager from '@/components/ExpenseInvitationManager/ExpenseInvitationManager'
 import Dialog from '@/components/Dialog'
 import IconButton from '@/components/IconButton/IconButton'
-import { DialogClose } from '@/components/ui/dialog'
 import { useExpenseInvitationManager } from '@/hooks/useExpenseInvitationManager/useExpenseInvitationManager'
 
 export default function ExpenseShareAction({ expenseId }: { expenseId: string }) {
@@ -31,18 +30,8 @@ export default function ExpenseShareAction({ expenseId }: { expenseId: string })
         onOpenChange={setIsOpen}
         title='Share expense'
         description='Create a link to invite people to this expense.'
-        className='max-h-[90dvh] overflow-y-auto pt-12'
-        showCloseButton={false}
+        className='max-h-[90dvh] overflow-y-auto'
       >
-          <DialogClose asChild>
-            <IconButton
-              type='button'
-              aria-label='Close share dialog'
-              className='absolute right-3 top-3 h-11 w-11 p-0 text-muted-foreground hover:text-foreground'
-            >
-              <X aria-hidden='true' size={20} />
-            </IconButton>
-          </DialogClose>
           {isOpen && <ExpenseInvitationManager {...invitationManager} />}
       </Dialog>
     </>

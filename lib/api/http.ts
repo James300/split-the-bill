@@ -1,4 +1,4 @@
-import { BadRequestError, NotFoundError, UnauthorizedError } from '@/lib/errors/domain'
+import { BadRequestError, ForbiddenError, NotFoundError, UnauthorizedError } from '@/lib/errors/domain'
 import { ValidationError } from '@/lib/utils/validation/validation-error'
 
 export function json(
@@ -30,6 +30,10 @@ export function handleRouteError(error: unknown): Response {
 
   if (error instanceof NotFoundError) {
     return json({ error: error.message }, { status: 404 })
+  }
+
+  if (error instanceof ForbiddenError) {
+    return json({ error: error.message }, { status: 403 })
   }
 
   if (error instanceof BadRequestError) {
