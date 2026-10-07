@@ -1,30 +1,34 @@
 import { pool } from '@/lib/db'
+import { BadRequestError } from '@/lib/errors/domain'
+import type { PoolClient } from '@neondatabase/serverless'
 import {
   Payment,
-  PaymentCreateInput,
   PaymentUpdateInput,
 } from '@/lib/schemas/payment.schema'
 
-export async function createPaymentInDatabase(
-  input: PaymentCreateInput,
-): Promise<Payment> {
-  const result = await pool.query<Payment>(
-    `
-    INSERT INTO payments (expense_id, paid_by_user_id, amount, created_at, updated_at)
-    VALUES ($1, $2, $3, NOW(), NOW())
-    RETURNING id, expense_id, paid_by_user_id, amount, created_at, updated_at, deleted_at;
-    `,
-    [input.expense_id, input.paid_by_user_id, input.amount],
+type PaymentQueryClient = Pick<PoolClient, 'query'>
+
+export async function hasPaymentDescriptionColumn(client: PaymentQueryClient): Promise<boolean> {
+  const result = await client.query<{ exists: boolean }>(
+    `SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = current_schema()
+        AND table_name = 'payments'
+        AND column_name = 'description'
+    ) AS exists`,
   )
-  return result.rows[0]
+  return Boolean(result.rows[0]?.exists)
 }
 
 export async function getPaymentFromDatabaseById(
   id: number,
 ): Promise<Payment | null> {
+  const descriptionColumn = await hasPaymentDescriptionColumn(pool)
+    ? 'description'
+    : 'NULL::text AS description'
   const result = await pool.query<Payment>(
     `
-    SELECT id, expense_id, paid_by_user_id, amount, created_at, updated_at, deleted_at
+    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, created_at, updated_at, deleted_at
     FROM payments
     WHERE id = $1 AND deleted_at IS NULL;
     `,
@@ -36,9 +40,12 @@ export async function getPaymentFromDatabaseById(
 export async function getPaymentsFromDatabaseByExpenseId(
   expenseId: number,
 ): Promise<Payment[]> {
+  const descriptionColumn = await hasPaymentDescriptionColumn(pool)
+    ? 'description'
+    : 'NULL::text AS description'
   const result = await pool.query<Payment>(
     `
-    SELECT id, expense_id, paid_by_user_id, amount, created_at, updated_at, deleted_at
+    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, created_at, updated_at, deleted_at
     FROM payments
     WHERE expense_id = $1 AND deleted_at IS NULL
     ORDER BY id;
@@ -53,9 +60,12 @@ export async function getPaymentsFromDatabaseByExpenseIdSince(
   since: number,
 ): Promise<Payment[]> {
   const sinceDate = new Date(since)
+  const descriptionColumn = await hasPaymentDescriptionColumn(pool)
+    ? 'description'
+    : 'NULL::text AS description'
   const result = await pool.query<Payment>(
     `
-    SELECT id, expense_id, paid_by_user_id, amount, created_at, updated_at, deleted_at
+    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, created_at, updated_at, deleted_at
     FROM payments
     WHERE expense_id = $1 AND updated_at > $2
     ORDER BY updated_at DESC;
@@ -69,6 +79,13 @@ export async function updatePaymentInDatabase(
   id: number,
   patch: PaymentUpdateInput,
 ): Promise<Payment | null> {
+  const hasDescriptionColumn = await hasPaymentDescriptionColumn(pool)
+  if (patch.description !== undefined && !hasDescriptionColumn) {
+    throw new BadRequestError('Apply the payment description database migration before editing item descriptions.')
+  }
+  const descriptionColumn = hasDescriptionColumn
+    ? 'description'
+    : 'NULL::text AS description'
   const fields: string[] = []
   const values: unknown[] = []
   let i = 1
@@ -80,6 +97,10 @@ export async function updatePaymentInDatabase(
   if (patch.amount !== undefined) {
     fields.push(`amount = $${i++}`)
     values.push(patch.amount)
+  }
+  if (patch.description !== undefined) {
+    fields.push(`description = $${i++}`)
+    values.push(patch.description)
   }
 
   if (fields.length === 0) {
@@ -94,7 +115,7 @@ export async function updatePaymentInDatabase(
     UPDATE payments
     SET ${fields.join(', ')}
     WHERE id = $${i}
-    RETURNING id, expense_id, paid_by_user_id, amount, created_at, updated_at, deleted_at;
+    RETURNING id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, created_at, updated_at, deleted_at;
     `,
     values,
   )

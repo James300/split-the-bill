@@ -407,7 +407,7 @@ export interface ExpenseMemberRow {
 export async function getExpenseMembersFromDatabase(
   viewerId: string,
   expenseId: number,
-): Promise<{ members: ExpenseMemberRow[]; canManageMembers: boolean }> {
+): Promise<{ members: ExpenseMemberRow[]; canManageMembers: boolean; currency: string }> {
   const hasCreatorColumn = await hasExpenseCreatorColumn(pool)
   const creatorColumn = hasCreatorColumn
     ? 'e.created_by_user_id'
@@ -419,10 +419,12 @@ export async function getExpenseMembersFromDatabase(
     id: string
     name: string
     created_by_user_id: string | null
+    currency: string
   }>(
     `SELECT ue.user_id::text AS id,
       COALESCE(NULLIF(u.name, ''), 'Member') AS name,
-      ${creatorColumn}
+      ${creatorColumn},
+      e.currency
      FROM expense e
      JOIN user_expense ue ON ue.expense_id = e.id
      LEFT JOIN neon_auth."user" u ON u.id::text = ue.user_id::text
@@ -440,6 +442,7 @@ export async function getExpenseMembersFromDatabase(
   const canManageMembers = creatorId !== null && creatorId === viewerId
   return {
     canManageMembers,
+    currency: result.rows[0].currency,
     members: result.rows.map(({ id, name }) => ({
       id,
       name,

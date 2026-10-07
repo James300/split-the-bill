@@ -1,23 +1,8 @@
 import { pool } from '@/lib/db'
 import {
   PaymentAllocation,
-  PaymentAllocationCreateInput,
   PaymentAllocationUpdateInput,
 } from '@/lib/schemas/payment-allocation.schema'
-
-export async function createPaymentAllocationInDatabase(
-  input: PaymentAllocationCreateInput,
-): Promise<PaymentAllocation> {
-  const result = await pool.query<PaymentAllocation>(
-    `
-    INSERT INTO payment_allocations (payment_id, user_id, amount, created_at, updated_at)
-    VALUES ($1, $2, $3, NOW(), NOW())
-    RETURNING payment_id, user_id, amount, created_at, updated_at, deleted_at;
-    `,
-    [input.payment_id, input.user_id, input.amount],
-  )
-  return result.rows[0]
-}
 
 export async function getPaymentAllocationsFromDatabaseByPaymentId(
   paymentId: number,

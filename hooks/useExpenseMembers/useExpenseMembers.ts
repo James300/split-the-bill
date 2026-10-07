@@ -13,6 +13,7 @@ export interface ExpenseMember {
 interface ExpenseMembersResponse {
   members: ExpenseMember[]
   canManageMembers: boolean
+  currency: string
 }
 
 async function getErrorMessage(response: Response, fallback: string) {
@@ -27,6 +28,7 @@ async function getErrorMessage(response: Response, fallback: string) {
 export function useExpenseMembers(expenseId: string, enabled: boolean) {
   const [members, setMembers] = useState<ExpenseMember[]>([])
   const [canManageMembers, setCanManageMembers] = useState(false)
+  const [currency, setCurrency] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [removingUserId, setRemovingUserId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -43,6 +45,7 @@ export function useExpenseMembers(expenseId: string, enabled: boolean) {
       const data = await response.json() as ExpenseMembersResponse
       setMembers(data.members)
       setCanManageMembers(data.canManageMembers)
+      setCurrency(data.currency)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Could not load expense members.')
     } finally {
@@ -74,5 +77,5 @@ export function useExpenseMembers(expenseId: string, enabled: boolean) {
     }
   }, [expenseId, loadMembers])
 
-  return { members, canManageMembers, isLoading, removingUserId, error, removeMember, reload: loadMembers }
+  return { members, canManageMembers, currency, isLoading, removingUserId, error, removeMember, reload: loadMembers }
 }

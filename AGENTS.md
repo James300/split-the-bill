@@ -36,6 +36,9 @@ Prefer shared UI components from `components/` over raw HTML controls or one-off
 - Allocations for a payment must add up exactly to its total. Reject allocations to non-members, duplicate participant allocations, zero or negative shares, or a payment with no allocations. Split remainders deterministically in the smallest currency unit and show the resulting shares before save.
 - Store amounts as integer minor currency units (for example, cents where the currency uses cents); never use floating-point arithmetic for balances. Respect currencies with a different minor-unit precision.
 - Payment payer and allocation participants must be members of that payment's expense. Validate this on the server as well as in the UI.
+- A new payment requires a short item description and an amount entered in the expense currency. The server stores the description with the payment and uses its creation timestamp as the recorded date.
+- Default the payer to the current user, but allow choosing any expense member. Default the split participants to all members and let the payer select any non-empty subset.
+- Split selected participants evenly in integer minor units. Assign any remainder units in stable ascending user-ID order, and preview each resulting share before saving.
 - Editing or deleting a payment must update the expense balance and keep the user aware of the resulting change. A payment is an expense item; a settlement is a repayment between members.
 
 ### Balances and settlements
@@ -54,6 +57,7 @@ Prefer shared UI components from `components/` over raw HTML controls or one-off
 - Avoid exposing private account fields to expense members; display only the profile information needed to identify participants.
 - Resolve member display names from the matching Neon Auth profile (`neon_auth.user`). The legacy application `user` table has a separate integer ID and must not be joined to `user_expense.user_id` for identities.
 - Keep transaction creation and its allocations atomic. If a multi-row operation fails, it must not leave a partial payment or membership behind.
+- Create a payment and all its participant allocations through one request and transaction. Do not expose a separate create-payment or create-allocation flow that can leave an incomplete or over-allocated payment.
 
 ## Core product flows
 

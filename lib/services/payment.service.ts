@@ -1,5 +1,4 @@
 import {
-  createPaymentAllocationInDatabase,
   deletePaymentAllocationFromDatabase,
   getPaymentAllocationFromDatabase,
   getPaymentAllocationsFromDatabaseByExpenseId,
@@ -7,48 +6,43 @@ import {
   updatePaymentAllocationInDatabase,
 } from '@/lib/db/payment-allocation.repo'
 import {
-  createPaymentInDatabase,
   deletePaymentFromDatabase,
   getPaymentFromDatabaseById,
   getPaymentsFromDatabaseByExpenseId,
   getPaymentsFromDatabaseByExpenseIdSince,
   updatePaymentInDatabase,
 } from '@/lib/db/payment.repo'
+import { createExpensePaymentInDatabase } from '@/lib/db/expense-payment.repo'
 import { requireExpenseMember } from '@/lib/access/expense-member'
 import { NotFoundError } from '@/lib/errors/domain'
 import {
   Payment,
-  PaymentCreateInput,
-  PaymentCreateSchema,
   PaymentUpdateInput,
   PaymentUpdateSchema,
+  ExpensePaymentCreateInput,
+  ExpensePaymentCreateSchema,
 } from '@/lib/schemas/payment.schema'
 import {
   PaymentAllocation,
-  PaymentAllocationCreateInput,
-  PaymentAllocationCreateSchema,
   PaymentAllocationUpdateInput,
   PaymentAllocationUpdateSchema,
 } from '@/lib/schemas/payment-allocation.schema'
 import { ValidationError } from '@/lib/utils/validation/validation-error'
 
-export async function createPayment(
+export async function createPaymentWithAllocations(
   userId: string,
-  input: PaymentCreateInput,
-): Promise<Payment> {
-  const validationResult = PaymentCreateSchema.safeParse(input)
-
+  input: ExpensePaymentCreateInput,
+) {
+  const validationResult = ExpensePaymentCreateSchema.safeParse(input)
   if (!validationResult.success) {
-    const errors = validationResult.error.issues.map((err) => ({
-      field: err.path.join('.'),
-      message: err.message,
+    const errors = validationResult.error.issues.map((issue) => ({
+      field: issue.path.join('.'),
+      message: issue.message,
     }))
-
     throw new ValidationError('Validation failed', errors)
   }
 
-  await requireExpenseMember(userId, validationResult.data.expense_id)
-  return createPaymentInDatabase(validationResult.data)
+  return createExpensePaymentInDatabase(userId, validationResult.data)
 }
 
 export async function getPaymentById(
@@ -114,29 +108,6 @@ export async function deletePayment(
   }
   await requireExpenseMember(userId, existing.expense_id)
   return deletePaymentFromDatabase(paymentId)
-}
-
-export async function createPaymentAllocation(
-  userId: string,
-  input: PaymentAllocationCreateInput,
-): Promise<PaymentAllocation> {
-  const validationResult = PaymentAllocationCreateSchema.safeParse(input)
-
-  if (!validationResult.success) {
-    const errors = validationResult.error.issues.map((err) => ({
-      field: err.path.join('.'),
-      message: err.message,
-    }))
-
-    throw new ValidationError('Validation failed', errors)
-  }
-
-  const payment = await getPaymentFromDatabaseById(validationResult.data.payment_id)
-  if (!payment) {
-    throw new NotFoundError()
-  }
-  await requireExpenseMember(userId, payment.expense_id)
-  return createPaymentAllocationInDatabase(validationResult.data)
 }
 
 export async function listAllocationsForPayment(

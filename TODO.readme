@@ -55,31 +55,34 @@ Plan:
 - [x] Add authenticated invite creation and revoke flows for expense members.
 - [x] Build a mobile preview showing expense name and current members without exposing transaction details before joining.
 - [x] Allow sign-in/sign-up during invite acceptance, then join the authenticated account idempotently.
-- [ ] Check invalid, expired, revoked, reused, already-member, and unauthorized invitation cases against a live database.
+- [x] Check invalid, expired, revoked, reused, already-member, and unauthorized invitation cases against a live database.
 - [x] Copy new links automatically, keep the selectable link field available for manual copying, and provide single success toast feedback for create and revoke actions.
 - [x] Apply the database migration in the configured environment.
-- [ ] Run the invite flow end to end with multiple accounts.
+- [x] Run the invite flow end to end with multiple accounts.
 
 Done when a recipient can open a valid link on mobile, understand which expense they are joining, authenticate if needed, join once, and see the expense in their list.
 
-## 5. Create a payment — Not started (API pieces only)
+## 5. Create a payment — Partial (creation flow implemented; migration and balance feedback pending)
 
-Payment and allocation APIs/services exist, but the expense detail screen is a stub and no payment entry flow is present. Current create endpoints accept payment and allocations as separate operations; validation does not yet enforce that allocations sum to the payment or that each allocated user is an expense member.
+The expense title row has a mobile-friendly payment form for description, amount, payer, and a selectable subset of expense members. It defaults to the current user as payer and all members as participants. It previews an even split in the expense currency, using integer minor units and a stable user-ID order for remainder units. The authenticated POST /api/payments path validates payer and participant membership and creates the payment plus all allocations in one transaction. The payment's creation time is its recorded date. No live end-to-end verification was done.
 
 Plan:
 
-- [ ] Design a quick mobile entry form for description/merchant, amount, payer, date, and participants. Confirm whether description/date need schema changes; current payment schema has amount and payer but no description.
-- [ ] Allow selecting any non-empty subset of expense members and preview exact split amounts, including minor-unit remainder handling.
-- [ ] Validate payer and participants are expense members and allocations exactly equal the total.
-- [ ] Save payment and allocations atomically so partial entries cannot affect balances.
-- [ ] Default payer to the current user while allowing another member to be selected where appropriate.
-- [ ] Show confirmation and updated balance after save; preserve input and show errors on failure.
+- [x] Add a mobile entry form for item description, amount, payer, and participants; use the recorded timestamp as the payment date.
+- [x] Allow selecting any non-empty subset of expense members and preview exact equal split amounts, including minor-unit remainder handling.
+- [x] Validate payer and participants are expense members and the split sums exactly to the payment total.
+- [x] Save payment and allocations atomically so partial entries cannot affect balances.
+- [x] Default payer to the current user while allowing another member to be selected.
+- [x] Show a success confirmation and preserve input with visible errors on failure.
+- [ ] Apply `lib/db/migrations/0003_payment_description.sql` with `npm run db:migrate` before using the payment form.
+- [ ] Verify a payment can be created against a live database and that allocation rows match the preview.
+- [ ] Show the updated balance after save when the balance view in task 7 is implemented.
 
-Done when a member can record a taxi, meal, hotel, or other item and clearly see who paid and which people owe which shares.
+Done when a member can record a taxi, meal, hotel, or other item; the payment and all participant shares are saved together, then visible in the ledger and reflected in the balance view.
 
 ## 6. View payments on an expense — Not started (API pieces only)
 
-The expense-scoped payments and allocations GET APIs exist; there is no payment list in the expense UI. The payment schema currently lacks a human-readable description, limiting useful presentation of trips' individual items.
+The expense-scoped payments and allocations GET APIs exist; there is no payment list in the expense UI. Payments now have an item description field, pending migration 0003, so the ledger can identify trips' individual items.
 
 Plan:
 

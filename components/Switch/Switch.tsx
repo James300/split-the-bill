@@ -3,14 +3,18 @@ import { Switch as SwitchComponent } from '../ui/switch'
 
 export interface ISwitchProps {
   checked?: boolean
+  id?: string
   label: string
   onClick?: (label: string) => void
+  onCheckedChange?: (checked: boolean) => void
 }
 
-function Switch({ checked, label, onClick }: ISwitchProps) {
-  const handleClick = useCallback(() => {
+function Switch({ checked, id, label, onClick, onCheckedChange }: ISwitchProps) {
+  const switchId = id ?? label
+  const handleClick = useCallback((nextChecked: boolean) => {
     onClick?.(label)
-  }, [label, onClick])
+    onCheckedChange?.(nextChecked)
+  }, [label, onClick, onCheckedChange])
 
   return (
     <div className="flex items-center space-x-3">
@@ -28,12 +32,12 @@ function Switch({ checked, label, onClick }: ISwitchProps) {
           data-[state=checked]:bg-(--text-dark)
         "
         checked={checked}
-        id={label}
+        id={switchId}
         onCheckedChange={handleClick}
       />
       <label
         className="cursor-pointer text-sm text-(--text-dark)"
-        htmlFor={label}
+        htmlFor={switchId}
       >
         {label}
       </label>
