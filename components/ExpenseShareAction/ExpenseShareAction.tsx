@@ -1,0 +1,50 @@
+'use client'
+
+import { useState } from 'react'
+import { Share2, X } from 'lucide-react'
+import ExpenseInvitationManager from '@/components/ExpenseInvitationManager/ExpenseInvitationManager'
+import Dialog from '@/components/Dialog'
+import IconButton from '@/components/IconButton/IconButton'
+import { DialogClose } from '@/components/ui/dialog'
+import { useExpenseInvitationManager } from '@/hooks/useExpenseInvitationManager/useExpenseInvitationManager'
+
+export default function ExpenseShareAction({ expenseId }: { expenseId: string }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const invitationManager = useExpenseInvitationManager(expenseId)
+
+  return (
+    <>
+      <IconButton
+        type='button'
+        aria-label='Share expense'
+        title='Share expense'
+        aria-haspopup='dialog'
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen(true)}
+        className='h-11 w-11 p-0'
+      >
+        <Share2 aria-hidden='true' size={18} />
+      </IconButton>
+
+      <Dialog
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        title='Share expense'
+        description='Create a link to invite people to this expense.'
+        className='max-h-[90dvh] overflow-y-auto pt-12'
+        showCloseButton={false}
+      >
+          <DialogClose asChild>
+            <IconButton
+              type='button'
+              aria-label='Close share dialog'
+              className='absolute right-3 top-3 h-11 w-11 p-0 text-muted-foreground hover:text-foreground'
+            >
+              <X aria-hidden='true' size={20} />
+            </IconButton>
+          </DialogClose>
+          {isOpen && <ExpenseInvitationManager {...invitationManager} />}
+      </Dialog>
+    </>
+  )
+}

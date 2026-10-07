@@ -14,7 +14,9 @@ interface IDialogProps {
   description?: string
   isFullscreen?: boolean
   open?: boolean
+  showCloseButton?: boolean
   title?: string
+  trigger?: React.ReactNode
   onOpenChange?: (open: boolean) => void
 }
 
@@ -23,7 +25,9 @@ function Dialog ({
   description,
   isFullscreen,
   open,
+  showCloseButton = true,
   title,
+  trigger,
   onOpenChange,
   ...props
 }: IDialogProps) {
@@ -31,8 +35,8 @@ function Dialog ({
 
   return (
     <DialogComponent open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger></DialogTrigger>
-      <DialogContent {...props}>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+      <DialogContent {...props} showCloseButton={showCloseButton}>
         {showHeader && (
           <DialogHeader>
             {title && <DialogTitle>{title}</DialogTitle>}

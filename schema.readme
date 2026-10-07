@@ -4,6 +4,7 @@ Tables
 - payment
 - payment_allocations
 - settlement
+- expense_invitation
 - user
 - user_expense
 
@@ -13,5 +14,8 @@ payment_allocations - This is a join table for users who should split a payment 
 settlement - This is responsible for tracking the settlement of payments between users
 user - This is a user of the application
 user_expense - This is a join table of users to expenses
+expense_invitation - This stores hashed, expiring and revocable share-link invitations to expenses
 
 View the schemas in ./lib/schemas to see the table structure
+
+Before using expense invitations, apply ./lib/db/migrations/0001_expense_invitations.sql to the database.

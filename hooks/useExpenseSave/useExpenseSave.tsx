@@ -1,13 +1,11 @@
 import { useCallback, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ICreateExpense } from '@/types/expense.interface'
-import { redirect } from 'next/navigation'
-import { useExpenses } from '@/store/ExpensesStore/ExpensesStore'
 
 function useExpenseSave() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const { setExpenses } = useExpenses()
+  const router = useRouter()
 
   const saveExpense = useCallback(async (expense: ICreateExpense) => {
     try {
@@ -27,16 +25,13 @@ function useExpenseSave() {
         return
       }
 
-      const data = await response.json()
-      // setExpenses(prev => ({ ...prev, [data.id]: data }))
-      return data
-    } catch (err) {
+      router.push('/')
+    } catch {
       setError('Failed to save expense. Please try again later.')
     } finally {
       setIsSaving(false)
-      redirect('/')
     }
-  }, [])
+  }, [router])
 
   return {
     isSaving,

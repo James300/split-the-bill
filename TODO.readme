@@ -1,0 +1,147 @@
+# Core functionality plan
+
+This plan describes the core flows for the trip and shared-expense use case. Status reflects source changes made on 2026-10-06. No live database or end-to-end flow has been exercised.
+
+Status key: **Implemented (runtime unverified)** means the main code path and expected states are implemented, but still need an environment-backed check; **Partial** means a blocking gap or bug remains; **Not started** means the end-user feature is missing.
+
+## 1. Create an account — Implemented (runtime unverified)
+
+Email/password sign-up and Google sign-in actions and forms exist. Email sign-up now redirects after the auth request's error-handling block, so successful sign-up navigation is not mistaken for an auth failure. Account creation has not been exercised against configured Neon Auth.
+
+Plan:
+
+- [x] Keep redirect control flow outside the error-handling catch; show auth failures in the form.
+- [ ] Verify email/password registration creates an authenticated session and reaches the signed-in expense list.
+- [ ] Verify duplicate email, invalid email, weak password, provider failure, and sign-out/sign-in behavior.
+- [ ] Verify Google OAuth callback and error redirect with configured provider credentials.
+- [ ] Confirm an account's identity is available to membership and expense APIs.
+
+Done when a new user can create an account, remain signed in after redirect, and sign in again on mobile; failures are visible and do not look like success.
+
+## 2. Create an expense — Implemented (runtime unverified)
+
+A form and authenticated POST /api/expenses path exist; service validation runs and the database operation adds the creator as a member. The client now navigates to the expense list only after a successful response. Failed requests keep the form open and surface an error. No runtime database verification was done.
+
+Plan:
+
+- [x] Navigate only after a successful response; retain form state and display an error on failure.
+- [x] Confirm name and currency validation in both client and server.
+- [x] Confirm the authenticated creator is the first and only initial member.
+- [x] Verify the created expense appears in the user's list and opens by its returned ID.
+- [x] Verify database failure does not leave an expense without its creator membership.
+
+Done when an authenticated user can create a named, single-currency expense on a phone and lands on a useful expense page; invalid or failed saves stay recoverable.
+
+## 3. List expenses the user belongs to — Implemented (runtime unverified)
+
+The signed-in home page now loads expenses through the member-scoped service, which filters out soft-deleted expenses, and renders expense cards. It shows an empty state and a visible error if loading fails. The path has not been exercised with a live session/database.
+
+Plan:
+
+- [x] Verify only the current user's active expenses appear, ordered with recently updated expenses first.
+- [x] Add a helpful empty state with a clear create-expense action.
+- [x] Add a visible error state; check the layout on a narrow phone viewport.
+- [ ] Verify expenses joined by invitation appear in the same list.
+
+Done when a user can reliably find every expense they belong to, open it, and understand what to do when the list is empty or unavailable.
+
+## 4. Create and use an expense share link — Implemented (runtime unverified)
+
+Expense members can open the share dialog from the expense title row to create a reusable seven-day invitation link or revoke it. The dialog has two states: create a link, or show its expiry, selectable read-only URL, create-new action, and red revoke action. New links are copied automatically and show one success toast; if clipboard access fails, the link remains in the input with an error message. Invitation URLs stay in memory for the current page session, including while the dialog is closed; a new session cannot restore an old URL, and creating a replacement revokes the previous active link. The URL field supports manual copying without separate copy or native-share buttons. Invitation request and share behavior lives in focused hooks. The public join page shows only the expense name and member names. Recipients can sign in or sign up and return to the invite, then join idempotently. Tokens are random and only their hashes are stored. The migration was applied and recorded against the configured database on 2026-10-06; the invitation flow still needs an end-to-end check.
+
+Plan:
+
+- [x] Define invitation storage/token rules: random reusable token, seven-day expiry, hash at rest, one active link per expense, replacement revokes prior link.
+- [x] Add authenticated invite creation and revoke flows for expense members.
+- [x] Build a mobile preview showing expense name and current members without exposing transaction details before joining.
+- [x] Allow sign-in/sign-up during invite acceptance, then join the authenticated account idempotently.
+- [ ] Check invalid, expired, revoked, reused, already-member, and unauthorized invitation cases against a live database.
+- [x] Copy new links automatically, keep the selectable link field available for manual copying, and provide single success toast feedback for create and revoke actions.
+- [x] Apply the database migration in the configured environment.
+- [ ] Run the invite flow end to end with multiple accounts.
+
+Done when a recipient can open a valid link on mobile, understand which expense they are joining, authenticate if needed, join once, and see the expense in their list.
+
+## 5. Create a payment — Not started (API pieces only)
+
+Payment and allocation APIs/services exist, but the expense detail screen is a stub and no payment entry flow is present. Current create endpoints accept payment and allocations as separate operations; validation does not yet enforce that allocations sum to the payment or that each allocated user is an expense member.
+
+Plan:
+
+- [ ] Design a quick mobile entry form for description/merchant, amount, payer, date, and participants. Confirm whether description/date need schema changes; current payment schema has amount and payer but no description.
+- [ ] Allow selecting any non-empty subset of expense members and preview exact split amounts, including minor-unit remainder handling.
+- [ ] Validate payer and participants are expense members and allocations exactly equal the total.
+- [ ] Save payment and allocations atomically so partial entries cannot affect balances.
+- [ ] Default payer to the current user while allowing another member to be selected where appropriate.
+- [ ] Show confirmation and updated balance after save; preserve input and show errors on failure.
+
+Done when a member can record a taxi, meal, hotel, or other item and clearly see who paid and which people owe which shares.
+
+## 6. View payments on an expense — Not started (API pieces only)
+
+The expense-scoped payments and allocations GET APIs exist; there is no payment list in the expense UI. The payment schema currently lacks a human-readable description, limiting useful presentation of trips' individual items.
+
+Plan:
+
+- [ ] Decide and implement a payment description/merchant field and date display if these remain product requirements.
+- [ ] Build a chronological, mobile-readable payment list with total, currency, payer, participants, and each participant's share.
+- [ ] Provide useful empty, loading, and error states.
+- [ ] Verify updates to payments and allocations refresh the list and balances.
+
+Done when every member can review the expense ledger and understand each charge without guessing who participated.
+
+## 7. View who owes whom for an expense — Partial (calculation API exists)
+
+GET /api/expenses/:id/owed computes net balances using payments, allocations, and settlements. The expense detail UI does not render the result. The API returns per-user net values; a clear pairwise transfer suggestion and user-facing wording still need to be built and checked.
+
+Plan:
+
+- [ ] Display the current user's position and a clear direction for each suggested transfer (for example, “You owe Alex $12.50”).
+- [ ] Include all participants, including those at zero balance, and clearly label users who should receive money.
+- [ ] Define deterministic transfer suggestions for groups of three or more while minimizing the number of suggested transfers; never change the underlying ledger to create suggestions.
+- [ ] Verify the formula and rounding across multiple payers, uneven splits, partial repayments, and fully settled expenses.
+- [ ] Keep all values in the expense currency and integer minor units.
+
+Done when each member can see their current amount to pay or receive, from whom/to whom, and how that amount was calculated.
+
+## 8. Create a settlement — Not started (API pieces only)
+
+A settlement POST route and service exist, but there is no settlement form. Validation checks basic fields but does not ensure payer/payee membership, different users, or an amount within the outstanding balance.
+
+Plan:
+
+- [ ] Add a form reachable from a suggested balance, prefilled with the payer, payee, outstanding amount, and date.
+- [ ] Verify payer and payee are members of the expense and are different people.
+- [ ] Prevent settling more than the outstanding balance in that direction; allow partial repayment.
+- [ ] Save and display the settlement only after a successful response, with clear failure recovery.
+- [ ] Verify balances recalculate immediately after settlement.
+
+Done when a user can record that money was actually paid to another member, with the direction and amount unambiguous.
+
+## 9. View settlements — Not started (API pieces only)
+
+The expense-scoped settlement list API exists, but no settlements UI exists.
+
+Plan:
+
+- [ ] Add a mobile-readable history showing payer, payee, amount, currency, and date.
+- [ ] Show an empty state and distinguish recorded repayments from expense payments.
+- [ ] Verify partial, multiple, edited, and deleted settlements affect balances and history consistently.
+
+Done when every expense member can review repayments and reconcile them with the remaining balance.
+
+## Additional core work
+
+- [ ] Build the expense detail screen and member list; it is currently a placeholder. This is the home for payment, balance, and settlement flows.
+- [ ] Define safe edit/delete rules for expenses, payments, allocations, and settlements, including the effect on other members' balances and history.
+- [ ] Define membership removal/leave behavior, including what happens when a member has unsettled balances or existing transaction history.
+- [ ] Add server-side cross-record validation and database constraints for membership, allocation totals, and valid settlement directions.
+- [ ] Decide whether trip expenses need receipt/photo attachments, dates, categories, or notes. These help trip tracking but can follow the ledger MVP.
+- [ ] Verify accessible mobile layout, touch targets, keyboard behavior, offline/network failure recovery, and currency formatting.
+- [ ] Add automated coverage for balance calculations and domain validation, plus an end-to-end smoke path through sign-up, invite join, payment, and settlement when requested/available.
+
+## Review notes
+
+- Statuses above reflect source changes and static review. Account creation, expense creation, list rendering, and database behavior need environment-backed verification.
+- User authentication appears to be handled by Neon Auth; the app's own user schema is used for application profiles.
+- The TODO describes product behavior agreed in [AGENTS.md](AGENTS.md). Update both documents when those rules change.

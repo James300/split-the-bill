@@ -1,23 +1,16 @@
 'use client'
 
 import { memo } from 'react'
-import Heading from '@/components/Heading/Heading'
-import { useExpense } from '@/store/ExpensesStore/ExpensesStore'
+import { useExpenseQuery } from '@/hooks/useExpensesQuery/useExpensesQuery'
 
 export interface IExpenseProps {
   id: string
 }
 
 function Expense({ id }: IExpenseProps) {
-  const expense = useExpense(id)
+  const expense = useExpenseQuery(id)
 
-  console.log(id, expense)
-
-  return (
-    <div>
-      <Heading tag='h5'>Expense</Heading>
-    </div>
-  )
+  return <h1 className='truncate text-xl font-bold'>{expense.expense?.name ?? 'Expense'}</h1>
 }
 
 export default memo(Expense)

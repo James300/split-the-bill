@@ -63,12 +63,12 @@ export async function signUpWithEmail(
     if (error) {
       return { error: error.message || 'Failed to create account. Try again.' }
     }
-
-    redirect('/')
   } catch (error) {
     console.error(error)
     return { error: 'Failed to create account. Try again.' }
   }
+
+  redirect('/')
 }
 
 export async function signInWithGoogle(formData?: FormData): Promise<void> {

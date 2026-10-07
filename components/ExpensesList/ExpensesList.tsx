@@ -8,8 +8,13 @@ export interface IExpensesListProps {
 function ExpensesList ({
   expenses,
 }: IExpensesListProps) {
-  if (expenses?.length === 0) {
-    return null
+  if (expenses.length === 0) {
+    return (
+      <div className='rounded-xl border border-dashed p-6 text-center' role='status'>
+        <p className='font-medium'>No expenses yet</p>
+        <p className='mt-1 text-sm text-muted-foreground'>Create an expense to start tracking shared costs.</p>
+      </div>
+    )
   }
 
   return expenses.map((expense) => (

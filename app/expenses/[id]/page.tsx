@@ -1,5 +1,6 @@
 import Page from '@/components/Page/Page';
 import ExpenseContainer from '@/containers/Expense/Expense'
+import ExpenseShareAction from '@/components/ExpenseShareAction/ExpenseShareAction'
 
 export default async function ExpensePage({ params }: {
   params: Promise<{ id: string }>
@@ -7,8 +8,11 @@ export default async function ExpensePage({ params }: {
   const { id } = await params
 
   return (
-    <Page>
-      <ExpenseContainer id={id} />
+    <Page
+      title={<ExpenseContainer id={id} />}
+      titleActions={<ExpenseShareAction expenseId={id} />}
+    >
+      {null}
     </Page>
   );
 }

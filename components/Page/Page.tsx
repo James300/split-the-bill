@@ -8,7 +8,8 @@ export interface IPageProps {
   children: React.ReactNode;
   heroImageUrl?: string;
   size?: PageSize;
-  title?: string;
+  title?: React.ReactNode;
+  titleActions?: React.ReactNode;
 }
 
 function getPageMaxWidth(size: PageSize = '2xl') {
@@ -29,15 +30,25 @@ function getPageMaxWidth(size: PageSize = '2xl') {
   }
 }
 
-function Page({ actionButton, children, heroImageUrl, size = '2xl', title }: IPageProps) {
+function Page({ actionButton, children, heroImageUrl, size = '2xl', title, titleActions }: IPageProps) {
   const maxWidth = getPageMaxWidth(size);
+  const titleContent = typeof title === 'string'
+    ? <h1 className="min-w-0 truncate text-xl font-bold">{title}</h1>
+    : title;
 
   return (
     <div className='flex flex-col flex-1 items-center w-full h-full'>
       {heroImageUrl && <HeroImage actionButton={actionButton} imageUrl={heroImageUrl} />}
       <div className={`flex flex-col flex-1 w-full h-full ${maxWidth} p-4 lg:px-24 lg:py-12`}>
         <div className="flex flex-col flex-1 gap-4 w-full bg-background">
-          {title && <h1 className="text-xl font-bold">{title}</h1>}
+          {(titleContent || titleActions) && (
+            <div className="flex w-full min-w-0 items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">{titleContent}</div>
+              {titleActions && (
+                <div className="flex shrink-0 items-center gap-2">{titleActions}</div>
+              )}
+            </div>
+          )}
           {children}
         </div>
       </div>

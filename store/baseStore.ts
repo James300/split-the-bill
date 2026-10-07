@@ -40,7 +40,18 @@ export function createLastFetchedAtAtom<T>(storeAtom: Atom<BaseStore<T>>) {
 }
 
 export function createEntityFamily<T>(dataAtom: Atom<Record<string, T>>) {
-  return (id: string) => atom((get) => get(dataAtom)[id])
+  const atomsById = new Map<string, Atom<T | undefined>>()
+
+  return (id: string) => {
+    const existingAtom = atomsById.get(id)
+    if (existingAtom) {
+      return existingAtom
+    }
+
+    const entityAtom: Atom<T | undefined> = atom((get) => get(dataAtom)[id])
+    atomsById.set(id, entityAtom)
+    return entityAtom
+  }
 }
 
 export function getMaxUpdatedAt<T extends { updatedAt: number }>(items: T[]): number {

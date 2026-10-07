@@ -34,6 +34,18 @@ The BE will map outgoing data to the BE from camelCase to snake_case.
 | DELETE | `/api/settlements/:id`        | Delete settlement               | —                       | `200`          |
 
 
+### Expense Invitations
+
+| Method | Endpoint                                      | Purpose                                  | Request Body | Response                       |
+| ------ | --------------------------------------------- | ---------------------------------------- | ------------ | ------------------------------ |
+| GET    | `/api/expenses/:id/invitations`               | List active invite metadata for a member | —            | `InvitationSummary[]`          |
+| POST   | `/api/expenses/:id/invitations`               | Create/replace a seven-day invite link   | —            | New token (returned once) and expiry |
+| DELETE | `/api/expenses/:id/invitations/:invitationId` | Revoke an invite link                    | —            | `204`                          |
+| POST   | `/api/invitations/:token/join`                | Join an expense using an invite          | —            | `{ expense_id }`               |
+
+The public preview is rendered at `/join/:token` and returns only the expense name and member names. The join endpoint requires an authenticated session.
+
+
 ### Users
 
 | Method | Endpoint         | Purpose          | Request Body | Response         |
