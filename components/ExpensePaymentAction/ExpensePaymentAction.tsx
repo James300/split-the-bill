@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ReceiptText } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import Dialog from '@/components/Dialog'
 import IconButton from '@/components/IconButton/IconButton'
 import ExpensePaymentManager from '@/components/ExpensePaymentManager/ExpensePaymentManager'
@@ -15,14 +15,14 @@ export default function ExpensePaymentAction({ expenseId }: { expenseId: string 
     <>
       <IconButton
         type='button'
-        aria-label='Add payment'
-        title='Add payment'
+        aria-label='Create new payment'
+        title='Create new payment'
         aria-haspopup='dialog'
         aria-expanded={isOpen}
         onClick={() => setIsOpen(true)}
-        className='h-11 w-11 p-0'
+        className='h-11 w-11 bg-primary p-0 text-primary-foreground hover:bg-primary-hover'
       >
-        <ReceiptText aria-hidden='true' size={18} />
+        <Plus aria-hidden='true' size={20} />
       </IconButton>
       <Dialog
         open={isOpen}
