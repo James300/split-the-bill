@@ -1,6 +1,6 @@
 'use server'
 
-import { authClient } from '@/lib/auth/client'
+import { auth } from '@/lib/auth/server'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 
@@ -21,7 +21,7 @@ export async function signInWithEmail(
     return { error: 'Password is required.' }
   }
 
-  const { error } = await authClient.signIn.email({
+  const { error } = await auth.signIn.email({
     email: email.trim(),
     password,
   })
@@ -54,7 +54,7 @@ export async function signUpWithEmail(
   }
 
   try {
-    const { error } = await authClient.signUp.email({
+    const { error } = await auth.signUp.email({
       name: name.trim(),
       email: email.trim(),
       password,
@@ -78,7 +78,7 @@ export async function signInWithGoogle(formData?: FormData): Promise<void> {
   const protocol = headersList.get('x-forwarded-proto') ?? 'http'
   const callbackURL = `${protocol}://${host}/`
 
-  const { data, error } = await authClient.signIn.social({
+  const { data, error } = await auth.signIn.social({
     provider: 'google',
     callbackURL,
   })

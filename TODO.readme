@@ -6,7 +6,7 @@ Status key: **Implemented (runtime unverified)** means the main code path and ex
 
 ## 1. Create an account — Implemented (runtime unverified)
 
-Email/password sign-up and Google sign-in actions and forms exist. Email sign-up now redirects after the auth request's error-handling block, so successful sign-up navigation is not mistaken for an auth failure. Account creation has not been exercised against configured Neon Auth.
+Email/password sign-up and Google sign-in actions and forms use the Neon Auth server API, so auth requests use the incoming request context and server-side session cookies. Email sign-up redirects after the auth request's error-handling block, so successful sign-up navigation is not mistaken for an auth failure. Account creation has not been exercised against configured Neon Auth.
 
 Plan:
 
