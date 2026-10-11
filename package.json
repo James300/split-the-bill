@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "node scripts/migrate.mjs",
-    "db:migrate:check": "node scripts/migrate.mjs --dry-run"
+    "db:migrate:check": "node scripts/migrate.mjs --dry-run",
+    "db:migration:new": "node scripts/new-migration.mjs"
   },
   "dependencies": {
     "@neondatabase/auth": "^0.5.0-beta",

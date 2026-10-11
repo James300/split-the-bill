@@ -1,7 +1,7 @@
 Tables
 
 - expense
-- payment
+- payments
 - payment_allocations
 - settlement
 - expense_invitation
@@ -16,8 +16,21 @@ user - This is a user of the application
 user_expense - This is a join table of users to expenses
 expense_invitation - This stores hashed, expiring and revocable share-link invitations to expenses
 
-View the schemas in ./lib/schemas to see the table structure
+The application-managed PostgreSQL schema is created by the ordered SQL migrations in
+`./lib/db/migrations`. The initial snapshot (`0000_initial_schema.sql`) includes the current
+expense, payment, allocation, settlement, membership, legacy user, and invitation tables and
+columns. The later migrations are retained as additive changes for databases that applied them
+before the baseline was introduced.
 
-Before using expense invitations, apply ./lib/db/migrations/0001_expense_invitations.sql to the database.
-Expense creator identity is stored in expense.created_by_user_id. Apply ./lib/db/migrations/0002_expense_creator.sql before using creator-only member management. Existing expenses have no creator recorded and keep removal disabled unless creator identity can be established separately.
-Payment item descriptions are stored in payments.description. Apply ./lib/db/migrations/0003_payment_description.sql before using payment creation and payment reads.
+Create a migration with a lowercase snake_case description:
+
+```sh
+npm run db:migration:new -- add_some_schema_change
+```
+
+Edit the generated SQL file, then review pending changes with `npm run db:migrate:check` and apply
+them with `npm run db:migrate`. Migrations run in filename order, each in its own transaction.
+Never edit a migration after it has been applied; add a later migration instead. Do not put
+transaction-control statements or non-transactional DDL in migration files.
+
+Neon Auth owns its `neon_auth` schema; application migrations do not create or modify it.
