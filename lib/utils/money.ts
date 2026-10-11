@@ -4,7 +4,7 @@ export function getCurrencyFractionDigits(currency: string): number {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
-  }).resolvedOptions().maximumFractionDigits
+  }).resolvedOptions().maximumFractionDigits ?? 2
 }
 
 export function parseCurrencyAmountToMinorUnits(

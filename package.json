@@ -11,8 +11,8 @@
     "db:migrate:check": "node scripts/migrate.mjs --dry-run"
   },
   "dependencies": {
-    "@neondatabase/auth": "^0.2.0-beta.1",
-    "@neondatabase/auth-ui": "^0.1.0-alpha.11",
+    "@neondatabase/auth": "^0.5.0-beta",
+    "@neondatabase/auth-ui": "^0.3.0-beta",
     "@neondatabase/serverless": "^1.0.1",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-dialog": "^1.1.15",
