@@ -31,7 +31,7 @@ export default function ExpenseMembersAction({ expenseId }: { expenseId: string 
         description='See who is part of this expense.'
         className='max-h-[90dvh] overflow-y-auto'
       >
-        {isOpen && <ExpenseMembersManager membersState={membersState} />}
+        <ExpenseMembersManager membersState={membersState} />
       </Dialog>
     </>
   )

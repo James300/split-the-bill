@@ -1,6 +1,7 @@
 'use client'
 
 import Button from '@/components/Button'
+import ExpensePaymentListPlaceholder from '@/components/ExpensePaymentList/ExpensePaymentListPlaceholder'
 import { useExpenseMembers } from '@/hooks/useExpenseMembers/useExpenseMembers'
 import { useExpensePayments } from '@/hooks/useExpensePayments/useExpensePayments'
 import { formatMinorCurrencyAmount } from '@/lib/utils/money'
@@ -32,10 +33,6 @@ export default function ExpensePaymentList({
     allocationsByPayment.set(allocation.payment_id, current)
   }
 
-  if (members.length === 0 && membersLoading) {
-    return <p role='status' className='text-sm text-muted-foreground'>Loading expense payments…</p>
-  }
-
   if (members.length === 0 && membersError) {
     return (
       <div className='flex flex-col gap-3'>
@@ -43,6 +40,11 @@ export default function ExpensePaymentList({
         <Button type='button' className='min-h-11 self-start' onClick={reloadMembers}>Try again</Button>
       </div>
     )
+  }
+
+  if ((members.length === 0 && (membersLoading || isLoading))
+    || (isLoading && payments.length === 0)) {
+    return <ExpensePaymentListPlaceholder />
   }
 
   if (members.length === 0 || !currency) {
@@ -58,10 +60,6 @@ export default function ExpensePaymentList({
           <p role='alert' className='text-sm text-destructive'>{error}</p>
           <Button type='button' className='min-h-11 self-start' onClick={retry}>Try again</Button>
         </div>
-      )}
-
-      {isLoading && payments.length === 0 && (
-        <p role='status' className='text-sm text-muted-foreground'>Loading payments…</p>
       )}
 
       {!isLoading && !error && payments.length === 0 && (

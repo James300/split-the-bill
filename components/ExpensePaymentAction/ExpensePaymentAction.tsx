@@ -37,16 +37,14 @@ export default function ExpensePaymentAction({
         description='Record what was paid for, who paid, and who is sharing the cost.'
         className='max-h-[90dvh] grid-rows-[auto_minmax(0,1fr)] overflow-hidden'
       >
-        {isOpen && (
-          <ExpensePaymentManager
-            expenseId={expenseId}
-            membersState={membersState}
-            onCreated={() => {
-              onCreated()
-              setIsOpen(false)
-            }}
-          />
-        )}
+        <ExpensePaymentManager
+          expenseId={expenseId}
+          membersState={membersState}
+          onCreated={() => {
+            onCreated()
+            setIsOpen(false)
+          }}
+        />
       </Dialog>
     </>
   )

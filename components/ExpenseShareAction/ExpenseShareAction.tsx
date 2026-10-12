@@ -32,7 +32,7 @@ export default function ExpenseShareAction({ expenseId }: { expenseId: string })
         description='Create a link to invite people to this expense.'
         className='max-h-[90dvh] overflow-y-auto'
       >
-          {isOpen && <ExpenseInvitationManager {...invitationManager} />}
+        <ExpenseInvitationManager {...invitationManager} />
       </Dialog>
     </>
   )

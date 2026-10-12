@@ -82,7 +82,7 @@ Done when a member can record a taxi, meal, hotel, or other item; the payment an
 
 ## 6. View payments on an expense — Implemented (runtime unverified)
 
-The expense page now shows a chronological, mobile-readable ledger using the existing member-scoped payment and allocation APIs. It displays each item's description, total in the expense currency, payer, recorded date, participants, and their shares. The ledger includes loading, empty, retry, and error states, and refreshes after a payment is successfully added. The payment description and creation timestamp are already stored by the payment flow; migration 0003 is still required in the configured database.
+The expense page now shows a chronological, mobile-readable ledger using the existing member-scoped payment and allocation APIs. It displays each item's description, total in the expense currency, payer, recorded date, participants, and their shares. The ledger includes a skeleton placeholder while initial data loads, empty, retry, and error states, and refreshes after a payment is successfully added. Dialog content remains mounted during close transitions so it fades with the dialog header. The payment description and creation timestamp are already stored by the payment flow; migration 0003 is still required in the configured database.
 
 Plan:
 
