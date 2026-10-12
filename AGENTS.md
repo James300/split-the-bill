@@ -47,6 +47,7 @@ Keep foreground and background color pairs accessible in both light and dark the
 
 - Derive balances from the expense's payments, allocations, and settlements. Do not store a second, independently editable balance value.
 - For each participant, net balance is amount paid for expense items minus their allocated shares, minus settlements they sent, plus settlements they received. A positive balance means the expense group owes that participant; a negative balance means that participant owes the group. The UI must translate this into clear person-to-person directions and amounts.
+- The expense page has an accessible money-icon action that shows, for every other member, the suggested amount they owe the current user or the current user owes them. In expenses with more than two members, also show the current user's overall net position.
 - A settlement records the expense, payer, payee, amount, and date. Both people must be members of that expense, payer and payee must differ, and amount must be positive and no greater than the outstanding amount in that direction.
 - Recording a settlement updates the displayed outstanding balances, but never modifies the underlying payments or allocations. Show settlement history with who paid whom, how much, and when.
 - Use exact minor-unit arithmetic and clearly label the expense currency everywhere money is displayed or entered.

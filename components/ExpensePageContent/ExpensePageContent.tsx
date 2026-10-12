@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import ExpenseBalanceAction from '@/components/ExpenseBalanceAction/ExpenseBalanceAction'
 import ExpenseMembersAction from '@/components/ExpenseMembersAction/ExpenseMembersAction'
 import ExpensePaymentAction from '@/components/ExpensePaymentAction/ExpensePaymentAction'
 import ExpenseShareAction from '@/components/ExpenseShareAction/ExpenseShareAction'
@@ -20,6 +21,7 @@ export default function ExpensePageContent({ expenseId }: { expenseId: string })
             expenseId={expenseId}
             onCreated={() => setPaymentsRefreshKey((current) => current + 1)}
           />
+          <ExpenseBalanceAction expenseId={expenseId} />
           <ExpenseMembersAction expenseId={expenseId} />
           <ExpenseShareAction expenseId={expenseId} />
         </>

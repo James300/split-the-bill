@@ -94,19 +94,19 @@ Plan:
 
 Done when every member can review the expense ledger and understand each charge without guessing who participated; runtime verification remains outstanding.
 
-## 7. View who owes whom for an expense — Partial (calculation API exists)
+## 7. View who owes whom for an expense — Partial (current user's breakdown implemented; global suggestions remain)
 
-GET /api/expenses/:id/owed computes net balances using payments, allocations, and settlements. The expense detail UI does not render the result. The API returns per-user net values; a clear pairwise transfer suggestion and user-facing wording still need to be built and checked.
+GET /api/expenses/:id/owed computes net balances using payments, allocations, and settlements. The expense page has an accessible money-icon action that shows the current user's suggested amount with each other member, in stable user-ID order, plus the current user's overall net when there are more than two members. It includes loading, error, and retry states. These current-user suggestions do not yet minimize transfers for the whole group, and the feature has not been runtime-verified.
 
 Plan:
 
-- [ ] Display the current user's position and a clear direction for each suggested transfer (for example, “You owe Alex $12.50”).
-- [ ] Include all participants, including those at zero balance, and clearly label users who should receive money.
+- [x] Display the current user's position and a clear direction for each suggested transfer (for example, “You owe Alex $12.50”).
+- [x] Include every other participant in the current user's breakdown and label members with no suggested transfer involving the current user.
 - [ ] Define deterministic transfer suggestions for groups of three or more while minimizing the number of suggested transfers; never change the underlying ledger to create suggestions.
 - [ ] Verify the formula and rounding across multiple payers, uneven splits, partial repayments, and fully settled expenses.
 - [ ] Keep all values in the expense currency and integer minor units.
 
-Done when each member can see their current amount to pay or receive, from whom/to whom, and how that amount was calculated.
+Done when each member can see their current amount to pay or receive, from whom/to whom, and how that amount was calculated. The personalized current-user breakdown is implemented, but global group-level suggestions and runtime verification remain outstanding.
 
 ## 8. Create a settlement — Not started (API pieces only)
 
