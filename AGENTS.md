@@ -42,6 +42,7 @@ Keep foreground and background color pairs accessible in both light and dark the
 - Default the payer to the current user, but allow choosing any expense member. Default the split participants to all members and let the payer select any non-empty subset.
 - Split selected participants evenly in integer minor units. Assign any remainder units in stable ascending user-ID order, and preview each resulting share before saving.
 - Editing or deleting a payment must update the expense balance and keep the user aware of the resulting change. A payment is an expense item; a settlement is a repayment between members.
+- Track a last-read timestamp per expense member. Existing memberships start as read through the migration time; new members start as read through the time they join. In the newest-first payment ledger, show a boundary between unread and already-read payments (or after all unread payments when none have been read yet). Advance read state only when that boundary is visible, and only through the newest payment currently loaded so later payments remain unread.
 
 ### Balances and settlements
 

@@ -7,6 +7,7 @@ Tables
 - expense_invitation
 - user
 - user_expense
+- expense_user_read_state
 
 expense - This is responsible for storing a list of payments from users
 payment - This is a payment submitted by a user to the expense
@@ -15,6 +16,9 @@ settlement - This is responsible for tracking the settlement of payments between
 user - This is a user of the application
 user_expense - This is a join table of users to expenses
 expense_invitation - This stores hashed, expiring and revocable share-link invitations to expenses
+expense_user_read_state - This stores each expense member's last-read timestamp; membership deletion
+cascades to the corresponding read state. Migration 0004 initializes existing memberships as read
+through the migration time.
 
 The application-managed PostgreSQL schema is created by the ordered SQL migrations in
 `./lib/db/migrations`. The initial snapshot (`0000_initial_schema.sql`) includes the current

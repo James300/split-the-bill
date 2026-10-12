@@ -1,9 +1,12 @@
 'use client'
 
+import { Fragment, useCallback } from 'react'
 import Button from '@/components/Button'
+import ExpensePaymentReadBoundary from '@/components/ExpensePaymentList/ExpensePaymentReadBoundary'
 import ExpensePaymentListPlaceholder from '@/components/ExpensePaymentList/ExpensePaymentListPlaceholder'
 import { useExpenseMembers } from '@/hooks/useExpenseMembers/useExpenseMembers'
 import { useExpensePayments } from '@/hooks/useExpensePayments/useExpensePayments'
+import { useExpenseReadState } from '@/hooks/useExpenseReadState/useExpenseReadState'
 import { formatMinorCurrencyAmount } from '@/lib/utils/money'
 
 function formatPaymentDate(timestamp: number) {
@@ -22,6 +25,7 @@ export default function ExpensePaymentList({
 }) {
   const membersState = useExpenseMembers(expenseId, true)
   const paymentsState = useExpensePayments(expenseId, refreshKey)
+  const readState = useExpenseReadState(expenseId)
   const { members, currency, isLoading: membersLoading, error: membersError, reload: reloadMembers } = membersState
   const { payments, allocations, isLoading, error, retry } = paymentsState
   const membersById = new Map(members.map((member) => [member.id, member.name]))
@@ -33,6 +37,20 @@ export default function ExpensePaymentList({
     allocationsByPayment.set(allocation.payment_id, current)
   }
 
+  const lastReadAt = readState.lastReadAt
+  const unreadCount = lastReadAt === null
+    ? 0
+    : payments.filter((payment) => payment.createdAt > lastReadAt).length
+  const readBoundaryIndex = unreadCount === 0 ? 0 : unreadCount
+  const readBoundaryLabel = unreadCount > 0 && readBoundaryIndex === payments.length
+    ? 'Mark new payments as read'
+    : 'Already read'
+  const markRead = readState.markRead
+  const markPaymentsRead = useCallback(() => {
+    const newestPayment = payments[0]
+    if (newestPayment) void markRead(newestPayment.id)
+  }, [markRead, payments])
+
   if (members.length === 0 && membersError) {
     return (
       <div className='flex flex-col gap-3'>
@@ -43,7 +61,8 @@ export default function ExpensePaymentList({
   }
 
   if ((members.length === 0 && (membersLoading || isLoading))
-    || (isLoading && payments.length === 0)) {
+    || (isLoading && payments.length === 0)
+    || (readState.isLoading && payments.length === 0)) {
     return <ExpensePaymentListPlaceholder />
   }
 
@@ -62,6 +81,15 @@ export default function ExpensePaymentList({
         </div>
       )}
 
+      {readState.error && (
+        <div className='flex flex-col gap-3 rounded-lg border border-destructive/40 p-4'>
+          <p role='alert' className='text-sm text-destructive'>{readState.error}</p>
+          <Button type='button' className='min-h-11 self-start' onClick={readState.retry}>
+            Try again
+          </Button>
+        </div>
+      )}
+
       {!isLoading && !error && payments.length === 0 && (
         <p className='rounded-lg border border-border p-4 text-sm text-muted-foreground'>
           No payments yet. Add the first expense item using the plus button above.
@@ -69,53 +97,75 @@ export default function ExpensePaymentList({
       )}
 
       {payments.length > 0 && (
-        <ol className='flex flex-col gap-3' aria-label='Expense payments, newest first' aria-busy={isLoading}>
-          {payments.map((payment) => {
+        <ol
+          className='flex flex-col gap-3'
+          aria-label='Expense payments, newest first'
+          aria-busy={isLoading || readState.isLoading}
+        >
+          {payments.map((payment, index) => {
             const paymentAllocations = allocationsByPayment.get(payment.id) ?? []
 
             return (
-              <li key={payment.id} className='rounded-lg border border-border p-4'>
-                <article className='flex flex-col gap-3'>
-                  <div className='flex items-start justify-between gap-3'>
-                    <div className='min-w-0'>
-                      <h3 className='break-words font-medium'>{payment.description || 'Expense item'}</h3>
-                      <p className='text-sm text-muted-foreground'>
-                        Paid by {membersById.get(payment.paidByUserId) ?? 'Unknown member'}
+              <Fragment key={payment.id}>
+                {index === readBoundaryIndex && (
+                  <ExpensePaymentReadBoundary
+                    key='read-boundary'
+                    label={readBoundaryLabel}
+                    observesUnreadPayments={unreadCount > 0 && !readState.isMarking && !readState.error}
+                    onVisible={markPaymentsRead}
+                  />
+                )}
+                <li className='rounded-lg border border-border p-4'>
+                  <article className='flex flex-col gap-3'>
+                    <div className='flex items-start justify-between gap-3'>
+                      <div className='min-w-0'>
+                        <h3 className='break-words font-medium'>{payment.description || 'Expense item'}</h3>
+                        <p className='text-sm text-muted-foreground'>
+                          Paid by {membersById.get(payment.paidByUserId) ?? 'Unknown member'}
+                        </p>
+                      </div>
+                      <p className='shrink-0 font-semibold'>
+                        {formatMinorCurrencyAmount(payment.amount, currency)}
                       </p>
                     </div>
-                    <p className='shrink-0 font-semibold'>
-                      {formatMinorCurrencyAmount(payment.amount, currency)}
-                    </p>
-                  </div>
 
-                  <p className='text-xs text-muted-foreground'>{formatPaymentDate(payment.createdAt)}</p>
+                    <p className='text-xs text-muted-foreground'>{formatPaymentDate(payment.createdAt)}</p>
 
-                  <div className='border-t border-border pt-3'>
-                    <h4 className='mb-2 text-sm font-medium'>Shares</h4>
-                    {paymentAllocations.length > 0 ? (
-                      <ul className='flex flex-col gap-1.5'>
-                        {paymentAllocations.map((allocation) => (
-                          <li
-                            key={`${allocation.payment_id}-${allocation.user_id}`}
-                            className='flex items-start justify-between gap-3 text-sm'
-                          >
-                            <span className='min-w-0 break-words'>
-                              {membersById.get(allocation.user_id) ?? 'Unknown member'}
-                            </span>
-                            <span className='shrink-0'>
-                              {formatMinorCurrencyAmount(allocation.amount, currency)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className='text-sm text-muted-foreground'>No participant shares are available.</p>
-                    )}
-                  </div>
-                </article>
-              </li>
+                    <div className='border-t border-border pt-3'>
+                      <h4 className='mb-2 text-sm font-medium'>Shares</h4>
+                      {paymentAllocations.length > 0 ? (
+                        <ul className='flex flex-col gap-1.5'>
+                          {paymentAllocations.map((allocation) => (
+                            <li
+                              key={`${allocation.payment_id}-${allocation.user_id}`}
+                              className='flex items-start justify-between gap-3 text-sm'
+                            >
+                              <span className='min-w-0 break-words'>
+                                {membersById.get(allocation.user_id) ?? 'Unknown member'}
+                              </span>
+                              <span className='shrink-0'>
+                                {formatMinorCurrencyAmount(allocation.amount, currency)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className='text-sm text-muted-foreground'>No participant shares are available.</p>
+                      )}
+                    </div>
+                  </article>
+                </li>
+              </Fragment>
             )
           })}
+          {payments.length > 0 && readBoundaryIndex === payments.length && (
+            <ExpensePaymentReadBoundary
+              key='read-boundary'
+              label={readBoundaryLabel}
+              observesUnreadPayments={unreadCount > 0 && !readState.isMarking && !readState.error}
+              onVisible={markPaymentsRead}
+            />
+          )}
         </ol>
       )}
     </section>

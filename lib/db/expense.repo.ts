@@ -1,4 +1,5 @@
 import { pool } from '@/lib/db'
+import { initializeExpenseUserReadState } from '@/lib/db/expense-read-state.repo'
 import { BadRequestError, ForbiddenError, NotFoundError } from '@/lib/errors/domain'
 import { Expense, ExpenseCreateInput, ExpenseUpdateInput } from '@/lib/schemas/expense.schema'
 import { PoolClient } from '@neondatabase/serverless'
@@ -55,6 +56,7 @@ export async function createExpenseInDatabase(
     const expenseRow = expenseResult.rows[0]
 
     await createUserExpense(client, userId, expenseRow.id)
+    await initializeExpenseUserReadState(client, userId, expenseRow.id)
 
     await client.query('COMMIT')
 
@@ -311,21 +313,32 @@ export async function addUserToExpenseInDatabase(
   expenseId: number,
   targetUserId: string,
 ): Promise<void> {
-  const access = await userHasExpenseAccess(requesterId, expenseId)
-  if (!access) {
-    throw new NotFoundError()
-  }
+  const client = await pool.connect()
 
-  await pool.query(
-    `
-    INSERT INTO user_expense (user_id, expense_id)
-    SELECT $1, $2
-    WHERE NOT EXISTS (
-      SELECT 1 FROM user_expense WHERE user_id = $1 AND expense_id = $2
-    );
-    `,
-    [targetUserId, expenseId],
-  )
+  try {
+    await client.query('BEGIN')
+    const access = await client.query(
+      `SELECT 1 FROM user_expense WHERE user_id = $1 AND expense_id = $2`,
+      [requesterId, expenseId],
+    )
+    if (access.rowCount === 0) {
+      throw new NotFoundError()
+    }
+
+    await client.query(
+      `INSERT INTO user_expense (user_id, expense_id)
+       VALUES ($1, $2)
+       ON CONFLICT (user_id, expense_id) DO NOTHING`,
+      [targetUserId, expenseId],
+    )
+    await initializeExpenseUserReadState(client, targetUserId, expenseId)
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
 }
 
 export async function removeUserFromExpenseInDatabase(

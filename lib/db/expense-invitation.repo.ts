@@ -1,4 +1,5 @@
 import { pool } from '@/lib/db'
+import { initializeExpenseUserReadState } from '@/lib/db/expense-read-state.repo'
 import type { ExpenseInvitation, ExpenseInvitationPreview } from '@/lib/schemas/expense-invitation.schema'
 import { NotFoundError } from '@/lib/errors/domain'
 
@@ -165,6 +166,7 @@ export async function joinExpenseWithInvitationInDatabase(
         [userId, invitation.expense_id],
       )
     }
+    await initializeExpenseUserReadState(client, userId, invitation.expense_id)
 
     await client.query('COMMIT')
     return invitation.expense_id
