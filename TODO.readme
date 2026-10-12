@@ -142,6 +142,7 @@ Done when every expense member can review repayments and reconcile them with the
 - [x] Define membership removal behavior: only the recorded creator may remove another member, and removal is blocked when active payment, allocation, or settlement history exists. Existing expenses without creator metadata cannot offer removal yet.
 - [ ] Add server-side cross-record validation and database constraints for membership, allocation totals, and valid settlement directions.
 - [ ] Decide whether trip expenses need receipt/photo attachments, dates, categories, or notes. These help trip tracking but can follow the ledger MVP.
+- [x] Keep themed text/background pairs at WCAG AA contrast for normal text in light and dark themes; retain each color's hue while slightly darkening its hover state.
 - [ ] Verify accessible mobile layout, touch targets, keyboard behavior, offline/network failure recovery, and currency formatting.
 - [ ] Add automated coverage for balance calculations and domain validation, plus an end-to-end smoke path through sign-up, invite join, payment, and settlement when requested/available.
 

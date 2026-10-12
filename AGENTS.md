@@ -12,6 +12,8 @@ Use the Page title row for compact page-level actions: keep the title at the sta
 
 Prefer shared UI components from `components/` over raw HTML controls or one-off styling. Extend a shared component when the needed behavior or visual variant is missing, and use the shared button, input, icon-button, and dialog components in feature UI.
 
+Keep foreground and background color pairs accessible in both light and dark themes (at least 4.5:1 contrast for normal text). Hover colors should remain within the same palette hue and darken the corresponding base color slightly.
+
 ## Domain behavior
 
 ### Accounts and membership

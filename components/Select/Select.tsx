@@ -28,7 +28,7 @@ export interface ISelectProps {
 function Select({ className, items, name, placeholder, onItemSelect, ...props }: ISelectProps) {
   return (
     <SelectComponent {...props} name={name} onValueChange={onItemSelect}>
-      <SelectTrigger className={cn(className, "border-(--text-border-light) rounded-xl p-5 w-full")}>
+      <SelectTrigger className={cn(className, "border-(--text-border-light) rounded-xl px-3 py-2 w-full")}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent className="border-(--text-border-light)">

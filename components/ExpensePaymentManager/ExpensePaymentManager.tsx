@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Button from '@/components/Button'
 import Input from '@/components/Input'
 import Select from '@/components/Select/Select'
@@ -35,16 +35,13 @@ export default function ExpensePaymentManager({
   const { createPayment, isSaving, error: saveError } = useCreateExpensePayment()
   const [description, setDescription] = useState('')
   const [amountText, setAmountText] = useState('')
-  const [paidByUserId, setPaidByUserId] = useState('')
-  const [participantUserIds, setParticipantUserIds] = useState<string[]>([])
-  const [participantsInitialized, setParticipantsInitialized] = useState(false)
-
-  useEffect(() => {
-    if (members.length === 0 || participantsInitialized) return
-    setParticipantUserIds(members.map((member) => member.id))
-    setPaidByUserId(members.find((member) => member.isCurrentUser)?.id ?? members[0].id)
-    setParticipantsInitialized(true)
-  }, [members, participantsInitialized])
+  const [selectedPayerUserId, setSelectedPayerUserId] = useState<string | null>(null)
+  const [selectedParticipantUserIds, setSelectedParticipantUserIds] = useState<string[] | null>(null)
+  const paidByUserId = selectedPayerUserId
+    ?? members.find((member) => member.isCurrentUser)?.id
+    ?? members[0]?.id
+    ?? ''
+  const participantUserIds = selectedParticipantUserIds ?? members.map((member) => member.id)
 
   const amountInMinorUnits = useMemo(
     () => currency ? parseCurrencyAmountToMinorUnits(amountText, currency) : null,
@@ -105,7 +102,7 @@ export default function ExpensePaymentManager({
     && participantUserIds.length > 0
 
   return (
-    <form className='flex max-h-[65dvh] flex-col gap-4 overflow-y-auto pr-1' onSubmit={handleSubmit}>
+    <form className='flex min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain pr-2' onSubmit={handleSubmit}>
       <div className='flex flex-col gap-1.5'>
         <Input
           id='payment-description'
@@ -145,7 +142,7 @@ export default function ExpensePaymentManager({
             value: member.id,
             label: `${member.name}${member.isCurrentUser ? ' (you)' : ''}`,
           }))}
-          onItemSelect={setPaidByUserId}
+          onItemSelect={setSelectedPayerUserId}
         />
       </div>
 
@@ -157,11 +154,14 @@ export default function ExpensePaymentManager({
               id={`payment-participant-${member.id}`}
               label={`${member.name}${member.isCurrentUser ? ' (you)' : ''}`}
               checked={participantUserIds.includes(member.id)}
-              onCheckedChange={(checked) => setParticipantUserIds((current) => (
+              onCheckedChange={(checked) => setSelectedParticipantUserIds((current) => {
+                const currentUserIds = current ?? members.map((currentMember) => currentMember.id)
+                return (
                 checked
-                  ? current.includes(member.id) ? current : [...current, member.id]
-                  : current.filter((id) => id !== member.id)
-              ))}
+                  ? currentUserIds.includes(member.id) ? currentUserIds : [...currentUserIds, member.id]
+                  : currentUserIds.filter((id) => id !== member.id)
+                )
+              })}
             />
             {participantUserIds.includes(member.id) && shares.has(member.id) && amountInMinorUnits !== null && (
               <span className='shrink-0 text-sm text-muted-foreground'>

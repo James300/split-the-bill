@@ -16,7 +16,7 @@ function Button({ children, onClick, variant = 'default', className, ...props }:
       className={cn(
         'rounded-xl cursor-pointer px-4 py-3 disabled:opacity-50 disabled:cursor-not-allowed',
         variant === 'destructive'
-          ? 'bg-destructive text-white hover:bg-destructive/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive'
+          ? 'bg-destructive text-destructive-foreground hover:bg-destructive-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive'
           : 'bg-primary text-primary-foreground hover:bg-primary-hover',
         className,
       )}

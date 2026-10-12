@@ -13,7 +13,7 @@ export interface IInputProps extends React.ComponentProps<'input'> {
 
 function Input({ className, id, label, helperText, hasError, suffixNode, ...props }: IInputProps) {
   const cnClasses = cn(
-    'border-border text-foreground rounded-xl p-5',
+    'border-border text-foreground rounded-xl px-3 py-2',
     hasError && 'border-red-500',
     suffixNode && 'pr-10',
     className
