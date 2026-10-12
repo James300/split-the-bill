@@ -12,7 +12,6 @@ import {
 import { getPaymentAllocationsFromDatabaseByExpenseId } from '@/lib/db/payment-allocation.repo'
 import { getPaymentsFromDatabaseByExpenseId } from '@/lib/db/payment.repo'
 import { getSettlementsFromDatabaseByExpenseId } from '@/lib/db/settlement.repo'
-import { getUsersFromDatabaseByIds } from '@/lib/db/user.repo'
 import {
   Expense,
   ExpenseCreateInput,
@@ -23,24 +22,8 @@ import {
   ExpenseUserAddSchema,
   ExpenseUserOwed,
 } from '@/lib/schemas/expense.schema'
-import { User } from '@/lib/schemas/user.schema'
 import { buildExpenseReadModel } from '@/lib/utils/buildExpense'
 import { ValidationError } from '@/lib/utils/validation/validation-error'
-
-function ensureUserForBalance(id: string, loaded: User[]): User {
-  const found = loaded.find((u) => u.id === id)
-  if (found) {
-    return found
-  }
-  const now = new Date()
-  return {
-    id,
-    name: 'Unknown',
-    email: 'unknown@example.com',
-    created_at: now,
-    updated_at: now,
-  }
-}
 
 export async function createExpense(
   userId: string,
@@ -141,22 +124,20 @@ export async function getExpenseOwedByUser(
   expenseId: number,
 ): Promise<ExpenseUserOwed[]> {
   const expense = await getExpenseFromDatabaseById(userId, expenseId)
-  const usersLoaded = await getUsersFromDatabaseByIds(expense.user_ids)
-  const users = expense.user_ids.map((id) => ensureUserForBalance(id, usersLoaded))
   const payments = await getPaymentsFromDatabaseByExpenseId(expenseId)
   const paymentAllocations =
     await getPaymentAllocationsFromDatabaseByExpenseId(expenseId)
   const settlements = await getSettlementsFromDatabaseByExpenseId(expenseId)
 
   const balances = buildExpenseReadModel({
-    users,
+    userIds: expense.user_ids,
     payments,
     paymentAllocations,
     settlements,
   })
 
   return balances.map((b) => ({
-    user_id: b.user.id,
+    user_id: b.userId,
     amount_net: b.amount_net,
   }))
 }

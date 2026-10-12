@@ -1,4 +1,3 @@
-import { User } from '@/lib/schemas/user.schema'
 import { Payment } from '@/lib/schemas/payment.schema'
 import { PaymentAllocation } from '@/lib/schemas/payment-allocation.schema'
 import { Settlement } from '@/lib/schemas/settlement.schema'
@@ -8,19 +7,19 @@ import { getUserPaymentAllocationsMap } from './getUserPaymentAllocationsMap.fun
 import { getUserSettlementsMap } from './getUserSettlementsMap.function'
 
 export type ExpenseParticipantBalance = {
-  user: User
+  userId: string
   amount_paid: number
   amount_owed: number
   amount_net: number
 }
 
 export function buildExpenseReadModel({
-  users,
+  userIds,
   payments,
   paymentAllocations,
   settlements,
 }: {
-  users: User[]
+  userIds: string[]
   payments: Payment[]
   paymentAllocations: PaymentAllocation[]
   settlements: Settlement[]
@@ -29,11 +28,11 @@ export function buildExpenseReadModel({
   const userPaymentAllocationsMap = getUserPaymentAllocationsMap(paymentAllocations)
   const { payerSettlementsMap, payeeSettlementsMap } = getUserSettlementsMap(settlements)
 
-  return users.map((user) => {
-    const userPayments = userPaymentsMap[user.id] ?? []
-    const userPaymentAllocations = userPaymentAllocationsMap[user.id] ?? []
-    const payerSettlements = payerSettlementsMap[user.id] ?? []
-    const payeeSettlements = payeeSettlementsMap[user.id] ?? []
+  return userIds.map((userId) => {
+    const userPayments = userPaymentsMap[userId] ?? []
+    const userPaymentAllocations = userPaymentAllocationsMap[userId] ?? []
+    const payerSettlements = payerSettlementsMap[userId] ?? []
+    const payeeSettlements = payeeSettlementsMap[userId] ?? []
 
     const amountPaid = userPayments.reduce((sum, p) => sum + p.amount, 0)
     const amountOwed = userPaymentAllocations.reduce((sum, a) => sum + a.amount, 0)
@@ -43,7 +42,7 @@ export function buildExpenseReadModel({
     const amountNet = amountPaid - amountOwed - settlementsSent + settlementsReceived
 
     return {
-      user,
+      userId,
       amount_paid: amountPaid,
       amount_owed: amountOwed,
       amount_net: amountNet,
