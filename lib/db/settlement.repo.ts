@@ -42,13 +42,13 @@ async function assertSettlementAllowed(
          AND payment.deleted_at IS NULL
          AND allocation.deleted_at IS NULL
        UNION ALL
-       SELECT payer_user_id::text, -amount::bigint
+       SELECT payer_user_id::text, amount::bigint
        FROM settlement
        WHERE expense_id = $1
          AND deleted_at IS NULL
          AND ($4::integer IS NULL OR id <> $4)
        UNION ALL
-       SELECT payee_user_id::text, amount::bigint
+       SELECT payee_user_id::text, -amount::bigint
        FROM settlement
        WHERE expense_id = $1
          AND deleted_at IS NULL

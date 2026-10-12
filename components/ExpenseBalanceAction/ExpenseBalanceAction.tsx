@@ -101,31 +101,6 @@ export default function ExpenseBalanceAction({
 
           {members.length > 0 && balances !== null && currency && currentMember && currentBalance && (
             <>
-              {currentBalance.amountNet < 0 && (
-                <Button
-                  type='button'
-                  className='min-h-11 w-full'
-                  onClick={() => setIsCreatingSettlement((current) => !current)}
-                >
-                  {isCreatingSettlement ? 'Back to balance' : 'Make a settlement'}
-                </Button>
-              )}
-
-              {isCreatingSettlement && currentBalance.amountNet < 0 && (
-                <ExpenseSettlementManager
-                  expenseId={expenseId}
-                  members={members}
-                  balances={balances}
-                  currency={currency}
-                  currentUserId={currentMember.id}
-                  onCreated={() => {
-                    setIsCreatingSettlement(false)
-                    retryBalances()
-                    onSettled()
-                  }}
-                />
-              )}
-
               {otherMembers.length > 1 && (
                 <div className='rounded-lg border border-border bg-muted/30 p-4'>
                   <p className='text-sm font-medium'>Your net across this expense</p>
@@ -160,6 +135,31 @@ export default function ExpenseBalanceAction({
                     )
                   })}
                 </ul>
+              )}
+
+              {currentBalance.amountNet < 0 && (
+                <Button
+                  type='button'
+                  className='min-h-11 w-full'
+                  onClick={() => setIsCreatingSettlement((current) => !current)}
+                >
+                  {isCreatingSettlement ? 'Back to balance' : 'Make a settlement'}
+                </Button>
+              )}
+
+              {isCreatingSettlement && currentBalance.amountNet < 0 && (
+                <ExpenseSettlementManager
+                  expenseId={expenseId}
+                  members={members}
+                  balances={balances}
+                  currency={currency}
+                  currentUserId={currentMember.id}
+                  onCreated={() => {
+                    setIsCreatingSettlement(false)
+                    retryBalances()
+                    onSettled()
+                  }}
+                />
               )}
             </>
           )}

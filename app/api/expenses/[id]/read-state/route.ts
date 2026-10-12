@@ -5,7 +5,7 @@ import { getSessionUserId } from '@/lib/api/session'
 import type { ExpenseReadStateUpdateInput } from '@/lib/schemas/expense-read-state.schema'
 import {
   getExpenseReadState,
-  markExpenseReadThroughPayment,
+  markExpenseReadThroughActivity,
 } from '@/lib/services/expense-read-state.service'
 
 export async function GET(
@@ -32,7 +32,7 @@ export async function PUT(
     const { id: raw } = await context.params
     const expenseId = requirePositiveIntParam(raw, 'expense id')
     const body = await parseJsonBody<ExpenseReadStateUpdateInput>(request)
-    const state = await markExpenseReadThroughPayment(userId, expenseId, body)
+    const state = await markExpenseReadThroughActivity(userId, expenseId, body)
     return json({ lastReadAt: state.last_read_at.getTime() }, {
       headers: { 'Cache-Control': 'private, no-store' },
     })

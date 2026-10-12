@@ -1,7 +1,8 @@
 import { z } from 'zod'
 
 export const ExpenseReadStateUpdateSchema = z.object({
-  paymentId: z.number().int().positive(),
+  activityType: z.enum(['payment', 'settlement']),
+  activityId: z.number().int().positive(),
 })
 
 export type ExpenseReadStateUpdateInput = z.infer<typeof ExpenseReadStateUpdateSchema>

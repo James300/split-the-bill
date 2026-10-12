@@ -51,26 +51,41 @@ export async function getExpenseUserReadStateFromDatabase(
   return state
 }
 
-export async function markExpenseUserReadThroughPaymentInDatabase(
+export async function markExpenseUserReadThroughActivityInDatabase(
   userId: string,
   expenseId: number,
-  paymentId: number,
+  activityType: 'payment' | 'settlement',
+  activityId: number,
 ): Promise<ExpenseUserReadState> {
   const result = await pool.query<ExpenseUserReadState>(
-    `UPDATE expense_user_read_state state
-     SET last_read_at = GREATEST(state.last_read_at, payment.created_at),
+    `WITH target_activity AS (
+       SELECT created_at
+       FROM payments
+       WHERE $3 = 'payment'
+         AND id = $4
+         AND expense_id = $2
+         AND deleted_at IS NULL
+       UNION ALL
+       SELECT created_at
+       FROM settlement
+       WHERE $3 = 'settlement'
+         AND id = $4
+         AND expense_id = $2
+         AND deleted_at IS NULL
+     )
+     UPDATE expense_user_read_state state
+     SET last_read_at = GREATEST(state.last_read_at, target_activity.created_at),
          updated_at = NOW()
-     FROM payments payment
-     JOIN user_expense membership
-       ON membership.expense_id = payment.expense_id
+     FROM target_activity
      WHERE state.user_id = $1
        AND state.expense_id = $2
-       AND membership.user_id = $1
-       AND payment.expense_id = $2
-       AND payment.id = $3
-       AND payment.deleted_at IS NULL
+       AND EXISTS (
+         SELECT 1
+         FROM user_expense membership
+         WHERE membership.user_id = $1 AND membership.expense_id = $2
+       )
      RETURNING state.last_read_at`,
-    [userId, expenseId, paymentId],
+    [userId, expenseId, activityType, activityId],
   )
   const state = result.rows[0]
   if (!state) {

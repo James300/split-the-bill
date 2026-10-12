@@ -39,7 +39,7 @@ export function buildExpenseReadModel({
     const settlementsSent = payerSettlements.reduce((sum, s) => sum + s.amount, 0)
     const settlementsReceived = payeeSettlements.reduce((sum, s) => sum + s.amount, 0)
 
-    const amountNet = amountPaid - amountOwed - settlementsSent + settlementsReceived
+    const amountNet = amountPaid - amountOwed + settlementsSent - settlementsReceived
 
     return {
       userId,

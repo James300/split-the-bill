@@ -6,6 +6,11 @@ interface ExpenseReadStateResponse {
   lastReadAt: number
 }
 
+export interface ExpenseActivityCursor {
+  activityType: 'payment' | 'settlement'
+  activityId: number
+}
+
 async function getErrorMessage(response: Response, fallback: string) {
   try {
     const body = await response.json()
@@ -21,8 +26,9 @@ export function useExpenseReadState(expenseId: string) {
   const [isLoading, setIsLoading] = useState(true)
   const [isMarking, setIsMarking] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hasMarkedReadThisVisit, setHasMarkedReadThisVisit] = useState(false)
   const [retryKey, setRetryKey] = useState(0)
-  const pendingPaymentId = useRef<number | null>(null)
+  const pendingActivity = useRef<ExpenseActivityCursor | null>(null)
   const marking = useRef(false)
 
   useEffect(() => {
@@ -34,16 +40,17 @@ export function useExpenseReadState(expenseId: string) {
       try {
         const response = await fetch(`/api/expenses/${expenseId}/read-state`, { cache: 'no-store' })
         if (!response.ok) {
-          throw new Error(await getErrorMessage(response, 'Could not load payment read status.'))
+          throw new Error(await getErrorMessage(response, 'Could not load activity read status.'))
         }
         const state = await response.json() as ExpenseReadStateResponse
         if (!cancelled) {
           setLastReadAt(state.lastReadAt)
           setLoadedExpenseId(expenseId)
+          setHasMarkedReadThisVisit(false)
         }
       } catch (loadError) {
         if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : 'Could not load payment read status.')
+          setError(loadError instanceof Error ? loadError.message : 'Could not load activity read status.')
         }
       } finally {
         if (!cancelled) setIsLoading(false)
@@ -56,29 +63,28 @@ export function useExpenseReadState(expenseId: string) {
     }
   }, [expenseId, retryKey])
 
-  const markRead = useCallback(async (paymentId: number): Promise<boolean> => {
+  const markRead = useCallback(async (activity: ExpenseActivityCursor): Promise<boolean> => {
     if (marking.current) return false
 
     marking.current = true
-    pendingPaymentId.current = paymentId
+    pendingActivity.current = activity
     setIsMarking(true)
     setError(null)
     try {
       const response = await fetch(`/api/expenses/${expenseId}/read-state`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentId }),
+        body: JSON.stringify(activity),
       })
       if (!response.ok) {
-        throw new Error(await getErrorMessage(response, 'Could not update payment read status.'))
+        throw new Error(await getErrorMessage(response, 'Could not update activity read status.'))
       }
-      const state = await response.json() as ExpenseReadStateResponse
-      setLastReadAt(state.lastReadAt)
-      setLoadedExpenseId(expenseId)
-      pendingPaymentId.current = null
+      await response.json() as ExpenseReadStateResponse
+      pendingActivity.current = null
+      setHasMarkedReadThisVisit(true)
       return true
     } catch (markError) {
-      setError(markError instanceof Error ? markError.message : 'Could not update payment read status.')
+      setError(markError instanceof Error ? markError.message : 'Could not update activity read status.')
       return false
     } finally {
       marking.current = false
@@ -87,8 +93,8 @@ export function useExpenseReadState(expenseId: string) {
   }, [expenseId])
 
   const retry = useCallback(() => {
-    if (pendingPaymentId.current !== null) {
-      void markRead(pendingPaymentId.current)
+    if (pendingActivity.current !== null) {
+      void markRead(pendingActivity.current)
     } else {
       setRetryKey((current) => current + 1)
     }
@@ -99,6 +105,7 @@ export function useExpenseReadState(expenseId: string) {
     lastReadAt: stateIsCurrent ? lastReadAt : null,
     isLoading: !stateIsCurrent || isLoading,
     isMarking,
+    hasMarkedReadThisVisit,
     error,
     markRead,
     retry,

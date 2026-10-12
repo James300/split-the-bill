@@ -1,7 +1,7 @@
 import { requireExpenseMember } from '@/lib/access/expense-member'
 import {
   getExpenseUserReadStateFromDatabase,
-  markExpenseUserReadThroughPaymentInDatabase,
+  markExpenseUserReadThroughActivityInDatabase,
 } from '@/lib/db/expense-read-state.repo'
 import { ValidationError } from '@/lib/utils/validation/validation-error'
 import {
@@ -14,7 +14,7 @@ export async function getExpenseReadState(userId: string, expenseId: number) {
   return getExpenseUserReadStateFromDatabase(userId, expenseId)
 }
 
-export async function markExpenseReadThroughPayment(
+export async function markExpenseReadThroughActivity(
   userId: string,
   expenseId: number,
   input: ExpenseReadStateUpdateInput,
@@ -28,9 +28,10 @@ export async function markExpenseReadThroughPayment(
   }
 
   await requireExpenseMember(userId, expenseId)
-  return markExpenseUserReadThroughPaymentInDatabase(
+  return markExpenseUserReadThroughActivityInDatabase(
     userId,
     expenseId,
-    validation.data.paymentId,
+    validation.data.activityType,
+    validation.data.activityId,
   )
 }

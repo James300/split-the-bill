@@ -87,6 +87,9 @@ main {
   --color-card: var(--card);
   --color-label: var(--label);
   --color-placeholder: var(--placeholder);
+  --color-activity-settlement: var(--activity-settlement);
+  --color-activity-credit: var(--activity-credit);
+  --color-activity-debt: var(--activity-debt);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -133,6 +136,9 @@ main {
   --sidebar-ring: oklch(0.704 0.04 256.788);
   --label: oklch(55.897% 0.00006 271.152);
   --placeholder: oklch(0.554 0.046 257.417);
+  --activity-settlement: oklch(0.47 0.13 150);
+  --activity-credit: oklch(0.46 0.15 250);
+  --activity-debt: oklch(0.5 0.17 28);
 }
 
 .dark {
@@ -174,6 +180,9 @@ main {
   --sidebar-ring: oklch(0.551 0.027 264.364);
   --label: var(--foreground);
   --placeholder: oklch(0.704 0.04 256.788);
+  --activity-settlement: oklch(0.74 0.13 150);
+  --activity-credit: oklch(0.76 0.12 250);
+  --activity-debt: oklch(0.73 0.15 28);
 }
 
 @layer base {

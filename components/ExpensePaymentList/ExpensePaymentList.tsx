@@ -68,30 +68,29 @@ export default function ExpensePaymentList({
   const lastReadAt = readState.lastReadAt
   const unreadCount = lastReadAt === null
     ? 0
-    : payments.filter((payment) => payment.createdAt > lastReadAt).length
+    : activities.filter((activity) => activity.createdAt > lastReadAt).length
   let readBoundaryIndex: number | null = null
-  if (payments.length > 0 && lastReadAt !== null && !readState.isLoading) {
-    const firstReadPaymentIndex = activities.findIndex((activity) =>
-      activity.kind === 'payment' && activity.record.createdAt <= lastReadAt,
-    )
+  if (activities.length > 0 && lastReadAt !== null && !readState.isLoading) {
+    const firstReadActivityIndex = activities.findIndex((activity) => activity.createdAt <= lastReadAt)
     if (unreadCount === 0) {
-      readBoundaryIndex = firstReadPaymentIndex >= 0
-        ? firstReadPaymentIndex
-        : activities.findIndex((activity) => activity.kind === 'payment')
-    } else if (firstReadPaymentIndex >= 0) {
-      readBoundaryIndex = firstReadPaymentIndex
+      readBoundaryIndex = 0
+    } else if (firstReadActivityIndex >= 0) {
+      readBoundaryIndex = firstReadActivityIndex
     } else {
-      readBoundaryIndex = activities.reduce((lastPaymentIndex, activity, index) =>
-        activity.kind === 'payment' ? index : lastPaymentIndex, -1,
-      ) + 1
+      readBoundaryIndex = activities.length
     }
   }
 
   const markRead = readState.markRead
-  const markPaymentsRead = useCallback(() => {
-    const newestPayment = payments[0]
-    if (newestPayment) void markRead(newestPayment.id)
-  }, [markRead, payments])
+  const markActivityRead = useCallback(() => {
+    const newestActivity = activities[0]
+    if (newestActivity) {
+      void markRead({
+        activityType: newestActivity.kind,
+        activityId: newestActivity.record.id,
+      })
+    }
+  }, [activities, markRead])
   const showPaymentListLoading = payments.length === 0 && settlements.length === 0
     && (isLoading || settlementsLoading || readState.isLoading)
 
@@ -159,13 +158,16 @@ export default function ExpensePaymentList({
               {index === readBoundaryIndex && (
                 <ExpensePaymentReadBoundary
                   key='read-boundary'
-                  label={unreadCount > 0 ? 'New payments' : 'Already read'}
-                  observesUnreadPayments={unreadCount > 0 && !readState.isMarking && !readState.error}
-                  onVisible={markPaymentsRead}
+                  label={unreadCount > 0 ? 'New activity' : 'Already read'}
+                  observesUnreadActivity={unreadCount > 0
+                    && !readState.isMarking
+                    && !readState.hasMarkedReadThisVisit
+                    && !readState.error}
+                  onVisible={markActivityRead}
                 />
               )}
               {activity.kind === 'settlement' ? (
-                <li className='rounded-lg border border-border border-l-4 border-l-green-700 p-4 dark:border-l-green-400'>
+                <li className='rounded-lg border border-border border-l-4 border-l-activity-settlement p-4'>
                   <article className='flex flex-col gap-3'>
                     <div className='flex items-start justify-between gap-3'>
                       <div className='min-w-0'>
@@ -196,9 +198,12 @@ export default function ExpensePaymentList({
           {readBoundaryIndex === activities.length && (
             <ExpensePaymentReadBoundary
               key='read-boundary'
-              label={unreadCount > 0 ? 'New payments' : 'Already read'}
-              observesUnreadPayments={unreadCount > 0 && !readState.isMarking && !readState.error}
-              onVisible={markPaymentsRead}
+              label={unreadCount > 0 ? 'New activity' : 'Already read'}
+              observesUnreadActivity={unreadCount > 0
+                && !readState.isMarking
+                && !readState.hasMarkedReadThisVisit
+                && !readState.error}
+              onVisible={markActivityRead}
             />
           )}
         </ol>
@@ -225,9 +230,9 @@ function PaymentActivity({
     .reduce((total, allocation) => total + allocation.amount, 0)
   const currentUserNet = (payment.paidByUserId === currentUserId ? payment.amount : 0) - currentUserShare
   const borderClass = currentUserNet > 0
-    ? 'border-l-blue-700 dark:border-l-blue-400'
+    ? 'border-l-activity-credit'
     : currentUserNet < 0
-      ? 'border-l-red-700 dark:border-l-red-400'
+      ? 'border-l-activity-debt'
       : ''
 
   return (

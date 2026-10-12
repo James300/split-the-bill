@@ -4,14 +4,14 @@ import { useOnVisible } from '@/hooks/useOnVisible/useOnVisible'
 
 export default function ExpensePaymentReadBoundary({
   label,
-  observesUnreadPayments,
+  observesUnreadActivity,
   onVisible,
 }: {
   label: string
-  observesUnreadPayments: boolean
+  observesUnreadActivity: boolean
   onVisible: () => void
 }) {
-  const ref = useOnVisible<HTMLLIElement>(observesUnreadPayments, onVisible)
+  const ref = useOnVisible<HTMLLIElement>(observesUnreadActivity, onVisible)
 
   return (
     <li ref={ref} role='separator' aria-label={label} className='flex items-center gap-3 py-1 text-xs font-medium text-muted-foreground'>
