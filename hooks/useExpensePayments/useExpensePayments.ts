@@ -41,10 +41,10 @@ export function useExpensePayments(expenseId: string, refreshKey: number) {
       setIsLoading(true)
       setError(null)
       try {
-        const query = `expenseId=${encodeURIComponent(expenseId)}`
+        const query = new URLSearchParams({ expense_id: expenseId })
         const [paymentsResponse, allocationsResponse] = await Promise.all([
-          fetch(`/api/payments?${query}`, { cache: 'no-store' }),
-          fetch(`/api/payment-allocations?${query}`, { cache: 'no-store' }),
+          fetch(`/api/payments?${query.toString()}`, { cache: 'no-store' }),
+          fetch(`/api/payment-allocations?${query.toString()}`, { cache: 'no-store' }),
         ])
 
         if (!paymentsResponse.ok) {

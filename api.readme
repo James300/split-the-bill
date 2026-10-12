@@ -16,7 +16,7 @@ The BE will map outgoing data to the BE from camelCase to snake_case.
 
 | Method | Endpoint                   | Purpose                      | Request Body           | Response         |
 | ------ | -------------------------- | ---------------------------- | -----------------------| ---------------- |
-| GET    | `/api/payments?expenseId=` | List payments for an expense | —                      | `Payment[]`      |
+| GET    | `/api/payments?expense_id=` | List payments for an expense | —                      | `Payment[]`      |
 | GET    | `/api/payments/:id`        | Get payment details          | —                      | `Payment`        |
 | POST   | `/api/payments`            | Create payment               | PaymentInput           | `Payment`        |
 | UPDATE | `/api/payments/:id`        | Update payment               | PaymentUpdateInput     | `Payment`        |
@@ -27,7 +27,7 @@ The BE will map outgoing data to the BE from camelCase to snake_case.
 
 | Method | Endpoint                      | Purpose                         | Request Body            | Response       |
 | ------ | ----------------------------- | ------------------------------- | ----------------------- | -------------- |
-| GET    | `/api/settlements?expenseId=` | List settlements for an expense | —                       | `Settlement[]` |
+| GET    | `/api/settlements?expense_id=` | List settlements for an expense | —                       | `Settlement[]` |
 | GET    | `/api/settlements/:id`        | Settlement detail               | —                       | `Settlement`   |
 | POST   | `/api/settlements`            | Create settlement               | `SettlementInput`       | `Settlement`   |
 | PATCH  | `/api/settlements/:id`        | Update settlement               | `SettlementUpdateInput` | `Settlement`   |
