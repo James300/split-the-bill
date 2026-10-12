@@ -7,7 +7,13 @@ import IconButton from '@/components/IconButton/IconButton'
 import ExpensePaymentManager from '@/components/ExpensePaymentManager/ExpensePaymentManager'
 import { useExpenseMembers } from '@/hooks/useExpenseMembers/useExpenseMembers'
 
-export default function ExpensePaymentAction({ expenseId }: { expenseId: string }) {
+export default function ExpensePaymentAction({
+  expenseId,
+  onCreated,
+}: {
+  expenseId: string
+  onCreated: () => void
+}) {
   const [isOpen, setIsOpen] = useState(false)
   const membersState = useExpenseMembers(expenseId, isOpen)
 
@@ -35,7 +41,10 @@ export default function ExpensePaymentAction({ expenseId }: { expenseId: string 
           <ExpensePaymentManager
             expenseId={expenseId}
             membersState={membersState}
-            onCreated={() => setIsOpen(false)}
+            onCreated={() => {
+              onCreated()
+              setIsOpen(false)
+            }}
           />
         )}
       </Dialog>

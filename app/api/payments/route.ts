@@ -13,7 +13,9 @@ export async function GET(request: Request) {
     const expenseId = requireExpenseIdQuery(new URL(request.url))
 
     const payments = await listPaymentsForExpense(userId, expenseId)
-    return json(entityArrayToMap(payments.map(mapPaymentRecord)))
+    return json(entityArrayToMap(payments.map(mapPaymentRecord)), {
+      headers: { 'Cache-Control': 'private, no-store' },
+    })
   })
 }
 

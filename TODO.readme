@@ -80,18 +80,19 @@ Plan:
 
 Done when a member can record a taxi, meal, hotel, or other item; the payment and all participant shares are saved together, then visible in the ledger and reflected in the balance view.
 
-## 6. View payments on an expense — Not started (API pieces only)
+## 6. View payments on an expense — Implemented (runtime unverified)
 
-The expense-scoped payments and allocations GET APIs exist; there is no payment list in the expense UI. Payments now have an item description field, pending migration 0003, so the ledger can identify trips' individual items.
+The expense page now shows a chronological, mobile-readable ledger using the existing member-scoped payment and allocation APIs. It displays each item's description, total in the expense currency, payer, recorded date, participants, and their shares. The ledger includes loading, empty, retry, and error states, and refreshes after a payment is successfully added. The payment description and creation timestamp are already stored by the payment flow; migration 0003 is still required in the configured database.
 
 Plan:
 
-- [ ] Decide and implement a payment description/merchant field and date display if these remain product requirements.
-- [ ] Build a chronological, mobile-readable payment list with total, currency, payer, participants, and each participant's share.
-- [ ] Provide useful empty, loading, and error states.
-- [ ] Verify updates to payments and allocations refresh the list and balances.
+- [x] Decide and implement a payment description field and recorded-date display.
+- [x] Build a chronological, mobile-readable payment list with total, currency, payer, participants, and each participant's share.
+- [x] Provide useful empty, loading, and error states.
+- [x] Refresh the payment list after a payment is created and whenever the expense page loads.
+- [ ] Verify payment and allocation changes refresh the list and balances when editing/deletion and balance flows are implemented.
 
-Done when every member can review the expense ledger and understand each charge without guessing who participated.
+Done when every member can review the expense ledger and understand each charge without guessing who participated; runtime verification remains outstanding.
 
 ## 7. View who owes whom for an expense — Partial (calculation API exists)
 

@@ -8,6 +8,8 @@ export async function GET(request: Request) {
     const userId = await getSessionUserId()
     const expenseId = requireExpenseIdQuery(new URL(request.url))
     const allocations = await listAllocationsForExpense(userId, expenseId)
-    return json(allocations)
+    return json(allocations, {
+      headers: { 'Cache-Control': 'private, no-store' },
+    })
   })
 }
