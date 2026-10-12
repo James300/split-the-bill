@@ -189,6 +189,10 @@ main {
   * {
     @apply border-border outline-ring/50;
   }
+
+  .date-input::-webkit-calendar-picker-indicator {
+    display: none;
+  }
   body {
     @apply bg-background text-foreground;
   }

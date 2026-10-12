@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Button from '@/components/Button'
+import DateInput from '@/components/DateInput/DateInput'
 import Input from '@/components/Input'
 import Select from '@/components/Select/Select'
 import Label from '@/components/typography/Label/Label'
@@ -134,12 +135,11 @@ export default function ExpenseSettlementManager({
         />
       </div>
 
-      <Input
+      <DateInput
         id='settlement-date'
         label='Date'
-        type='date'
         value={date}
-        onChange={(event) => setDate(event.currentTarget.value)}
+        onChange={setDate}
       />
 
       <div className='flex flex-col gap-1.5'>

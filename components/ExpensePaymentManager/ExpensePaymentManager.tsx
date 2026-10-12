@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Button from '@/components/Button'
+import DateInput from '@/components/DateInput/DateInput'
 import Input from '@/components/Input'
 import Select from '@/components/Select/Select'
 import Switch from '@/components/Switch/Switch'
@@ -144,12 +145,11 @@ export default function ExpensePaymentManager({
         />
       </div>
 
-      <Input
+      <DateInput
         id='payment-date'
         label='Date'
-        type='date'
         value={date}
-        onChange={(event) => setDate(event.currentTarget.value)}
+        onChange={setDate}
       />
 
       <div className='flex flex-col gap-1.5'>

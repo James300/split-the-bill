@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment } from 'react'
+import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import Button from '@/components/Button'
 import ExpensePaymentReadBoundary from '@/components/ExpensePaymentList/ExpensePaymentReadBoundary'
@@ -48,6 +49,7 @@ export default function ExpensePaymentList({
   const paymentsState = useExpensePayments(expenseId, refreshKey)
   const settlementsState = useExpenseSettlements(expenseId, refreshKey)
   const readState = useExpenseReadState(expenseId)
+  const [showSettledHistory, setShowSettledHistory] = useState(false)
   const { members, currency, isLoading: membersLoading, error: membersError, reload: reloadMembers } = membersState
   const { payments, allocations, isLoading, error, retry } = paymentsState
   const {
@@ -130,6 +132,9 @@ export default function ExpensePaymentList({
   const visibleActivities = settledActivityIndex >= 0
     ? activities.slice(0, settledActivityIndex + 1)
     : activities
+  const renderedActivities = isFullySettled && showSettledHistory
+    ? activities
+    : visibleActivities
 
   const lastReadAt = readState.lastReadAt
   const lastReadActivity = readState.lastReadActivity
@@ -156,7 +161,7 @@ export default function ExpensePaymentList({
   const unreadCount = isFullySettled
     ? Math.max(0, settledActivityIndex + 1 - (readBoundaryIndex ?? 0))
     : readBoundaryIndex ?? 0
-  if (isFullySettled) readBoundaryIndex = visibleActivities.length
+  if (isFullySettled) readBoundaryIndex = settledActivityIndex + 1
 
   const markRead = readState.markRead
   const markActivityRead = () => {
@@ -235,13 +240,13 @@ export default function ExpensePaymentList({
           </p>
         )}
 
-      {visibleActivities.length > 0 && (
+      {renderedActivities.length > 0 && (
         <ol
           className='flex flex-col gap-3'
           aria-label='Expense payments and settlements, newest first'
           aria-busy={isLoading || settlementsLoading || readState.isLoading}
         >
-          {visibleActivities.map((activity, index) => (
+          {renderedActivities.map((activity, index) => (
             <Fragment key={`${activity.kind}-${activity.record.id}`}>
               {index === readBoundaryIndex && (
                 <ExpensePaymentReadBoundary
@@ -253,60 +258,41 @@ export default function ExpensePaymentList({
                     && !readState.hasMarkedReadThisVisit
                     && !readState.error}
                   onVisible={markActivityRead}
+                  actionLabel={isFullySettled && !showSettledHistory ? 'Show earlier activity' : undefined}
+                  onAction={isFullySettled && !showSettledHistory
+                    ? () => setShowSettledHistory(true)
+                    : undefined}
                 />
               )}
               {activity.kind === 'settlement' ? (
                 <li className={`rounded-lg border border-t-border border-r-border border-b-border p-4 ${activity.record.deletedAt ? 'border-l-4 border-l-muted-foreground' : 'border-l-4 !border-l-activity-settlement'}`}>
-                  <details className='group'>
-                    <summary className='flex min-h-11 cursor-pointer list-none flex-col gap-2 [&::-webkit-details-marker]:hidden'>
-                      <div className='flex items-start justify-between gap-3'>
-                        <div className='min-w-0'>
-                          <span className='block font-medium'>{activity.record.deletedAt ? 'Settlement deleted' : 'Settlement'}</span>
-                          {!activity.record.deletedAt && (
-                            <p className='break-words text-sm text-muted-foreground'>
-                              {membersById.get(activity.record.payerUserId) ?? 'Unknown member'} paid{' '}
-                              {membersById.get(activity.record.payeeUserId) ?? 'Unknown member'}
-                            </p>
-                          )}
-                        </div>
-                        {!activity.record.deletedAt && (
-                          <p className='shrink-0 font-semibold'>
-                            {formatMinorCurrencyAmount(activity.record.amount, currency)}
-                          </p>
-                        )}
-                      </div>
-                      <div className='flex items-center justify-between gap-3'>
-                        <p className='text-xs text-muted-foreground'>
-                          {activity.record.deletedAt
-                            ? `Deleted ${formatPaymentDate(activity.record.deletedAt)}`
-                            : formatPaymentDate(activity.record.date)}
+                  <article className='flex flex-col gap-3'>
+                    <div className='flex items-start justify-between gap-3'>
+                      <div className='min-w-0'>
+                        <h3 className='font-medium'>{activity.record.deletedAt ? 'Settlement deleted' : 'Settlement'}</h3>
+                        <p className='break-words text-sm text-muted-foreground'>
+                          {membersById.get(activity.record.payerUserId) ?? 'Unknown member'} paid{' '}
+                          {membersById.get(activity.record.payeeUserId) ?? 'Unknown member'}
                         </p>
-                        <ChevronDown aria-hidden='true' size={16} className='shrink-0 text-muted-foreground transition-transform group-open:rotate-180' />
                       </div>
-                    </summary>
-                    <div className='mt-3 flex flex-col gap-3 border-t border-border pt-3'>
-                      {activity.record.deletedAt ? (
-                        <details className='rounded-md border border-border px-3 py-2'>
-                          <summary className='min-h-11 cursor-pointer py-3 text-sm font-medium'>View deleted settlement details</summary>
-                          <div className='flex flex-col gap-2 pb-2 text-sm'>
-                            <p>
-                              {membersById.get(activity.record.payerUserId) ?? 'Unknown member'} paid{' '}
-                              {membersById.get(activity.record.payeeUserId) ?? 'Unknown member'}
-                            </p>
-                            <p>{formatMinorCurrencyAmount(activity.record.amount, currency)}</p>
-                            <p className='text-xs text-muted-foreground'>Recorded {formatPaymentDate(activity.record.date)}</p>
-                          </div>
-                        </details>
-                      ) : activity.record.createdByUserId === currentMember?.id ? (
-                        <ExpenseLedgerItemActions
-                          itemType='settlement'
-                          itemId={activity.record.id}
-                          onEdit={() => onEditSettlement(activity.record)}
-                          onDeleted={onActivityChanged}
-                        />
-                      ) : null}
+                      <p className='shrink-0 font-semibold'>
+                        {formatMinorCurrencyAmount(activity.record.amount, currency)}
+                      </p>
                     </div>
-                  </details>
+                    <p className='text-xs text-muted-foreground'>
+                      {activity.record.deletedAt
+                        ? `Deleted ${formatPaymentDate(activity.record.deletedAt)} · Recorded ${formatPaymentDate(activity.record.date)}`
+                        : formatPaymentDate(activity.record.date)}
+                    </p>
+                    {!activity.record.deletedAt && activity.record.createdByUserId === currentMember?.id && (
+                      <ExpenseLedgerItemActions
+                        itemType='settlement'
+                        itemId={activity.record.id}
+                        onEdit={() => onEditSettlement(activity.record)}
+                        onDeleted={onActivityChanged}
+                      />
+                    )}
+                  </article>
                 </li>
               ) : (
                 <PaymentActivity
@@ -323,7 +309,7 @@ export default function ExpensePaymentList({
               )}
             </Fragment>
           ))}
-          {readBoundaryIndex === visibleActivities.length && (
+          {readBoundaryIndex === renderedActivities.length && (
             <ExpensePaymentReadBoundary
               key='read-boundary'
               label={isFullySettled ? 'All paid' : unreadCount > 0 ? 'New activity' : 'Already read'}
@@ -333,6 +319,10 @@ export default function ExpensePaymentList({
                 && !readState.hasMarkedReadThisVisit
                 && !readState.error}
               onVisible={markActivityRead}
+              actionLabel={isFullySettled && !showSettledHistory ? 'Show earlier activity' : undefined}
+              onAction={isFullySettled && !showSettledHistory
+                ? () => setShowSettledHistory(true)
+                : undefined}
             />
           )}
         </ol>
