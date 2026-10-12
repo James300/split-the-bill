@@ -3,7 +3,11 @@ import { BadRequestError, NotFoundError } from '@/lib/errors/domain'
 import type { ExpensePaymentCreateInput, Payment } from '@/lib/schemas/payment.schema'
 import type { PaymentAllocation } from '@/lib/schemas/payment-allocation.schema'
 import { sortMemberIds } from '@/lib/utils/money'
-import { hasPaymentCreatorColumn, hasPaymentDescriptionColumn } from '@/lib/db/payment.repo'
+import {
+  hasPaymentCreatorColumn,
+  hasPaymentDateColumn,
+  hasPaymentDescriptionColumn,
+} from '@/lib/db/payment.repo'
 
 export interface CreatedExpensePayment {
   payment: Payment
@@ -24,6 +28,9 @@ export async function createExpensePaymentInDatabase(
     }
     if (!(await hasPaymentCreatorColumn(client))) {
       throw new BadRequestError('Apply database migration 0005_ledger_item_history before adding payments.')
+    }
+    if (!(await hasPaymentDateColumn(client))) {
+      throw new BadRequestError('Apply database migration 0006_ledger_activity_dates_and_read_cursor before adding payments.')
     }
 
     const expenseAccess = await client.query<{ id: number }>(
@@ -53,11 +60,11 @@ export async function createExpensePaymentInDatabase(
 
     const paymentResult = await client.query<Payment>(
       `INSERT INTO payments (
-         expense_id, paid_by_user_id, amount, description, created_by_user_id, created_at, updated_at
+         expense_id, paid_by_user_id, amount, description, date, created_by_user_id, created_at, updated_at
        )
-       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-       RETURNING id, expense_id, paid_by_user_id, amount, description, created_at, updated_at, deleted_at, created_by_user_id`,
-      [input.expenseId, input.paidByUserId, input.amount, input.description, actorUserId],
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+       RETURNING id, expense_id, paid_by_user_id, amount, description, date, created_at, updated_at, deleted_at, created_by_user_id`,
+      [input.expenseId, input.paidByUserId, input.amount, input.description, input.date ?? null, actorUserId],
     )
     const payment = paymentResult.rows[0]
 

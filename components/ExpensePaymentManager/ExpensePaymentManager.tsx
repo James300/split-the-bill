@@ -11,6 +11,7 @@ import { useCreateExpensePayment } from '@/hooks/useCreateExpensePayment/useCrea
 import type { ExpensePaymentRecord } from '@/hooks/useExpensePayments/useExpensePayments'
 import type { PaymentAllocationRecord } from '@/hooks/useExpensePayments/useExpensePayments'
 import { formatMinorCurrencyAmount, getCurrencyFractionDigits, parseCurrencyAmountToMinorUnits, sortMemberIds } from '@/lib/utils/money'
+import { getCurrentLocalDateString } from '@/lib/utils/date'
 
 type MembersState = ReturnType<typeof useExpenseMembers>
 
@@ -43,6 +44,7 @@ export default function ExpensePaymentManager({
   const [amountOverride, setAmountOverride] = useState<string | null>(null)
   const [selectedPayerUserId, setSelectedPayerUserId] = useState<string | null>(null)
   const [selectedParticipantUserIds, setSelectedParticipantUserIds] = useState<string[] | null>(null)
+  const [date, setDate] = useState(() => initialPayment?.date ?? getCurrentLocalDateString())
   const isEditing = Boolean(initialPayment)
   const description = descriptionOverride ?? initialPayment?.description ?? ''
   const amountText = amountOverride
@@ -104,6 +106,7 @@ export default function ExpensePaymentManager({
     const saved = isEditing && initialPayment
       ? await updatePayment(initialPayment.id, {
         description: description.trim(),
+        date: date || null,
         amount: amountInMinorUnits,
         paid_by_user_id: paidByUserId,
         participant_user_ids: participantUserIds,
@@ -111,6 +114,7 @@ export default function ExpensePaymentManager({
       : await createPayment({
         expenseId: Number(expenseId),
         description: description.trim(),
+        date: date || null,
         amount: amountInMinorUnits,
         paidByUserId,
         participantUserIds,
@@ -139,6 +143,14 @@ export default function ExpensePaymentManager({
           onChange={(event) => setDescriptionOverride(event.currentTarget.value)}
         />
       </div>
+
+      <Input
+        id='payment-date'
+        label='Date'
+        type='date'
+        value={date}
+        onChange={(event) => setDate(event.currentTarget.value)}
+      />
 
       <div className='flex flex-col gap-1.5'>
         <Input

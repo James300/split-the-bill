@@ -1,6 +1,6 @@
 # Core functionality plan
 
-This plan describes the core flows for the trip and shared-expense use case. Status reflects source changes made on 2026-10-12. Migration 0004 was applied to the configured database and backfilled all three existing memberships; settlement and activity-read UI flows have not been end-to-end tested.
+This plan describes the core flows for the trip and shared-expense use case. Status reflects source changes made on 2026-10-12. Migrations 0004 and 0006 were applied to the configured database. Settlement and activity-read UI flows have not been end-to-end tested.
 
 Status key: **Implemented (runtime unverified)** means the main code path and expected states are implemented, but still need an environment-backed check; **Partial** means a blocking gap or bug remains; **Not started** means the end-user feature is missing.
 
@@ -65,17 +65,18 @@ Done when a recipient can open a valid link on mobile, understand which expense 
 
 ## 5. Create a payment — Partial (creation flow implemented; migration and balance feedback pending)
 
-The expense title row has a mobile-friendly payment form for description, amount, payer, and a selectable subset of expense members. It defaults to the current user as payer and all members as participants. It previews an even split in the expense currency, using integer minor units and a stable user-ID order for remainder units. The authenticated POST /api/payments path validates payer and participant membership and creates the payment plus all allocations in one transaction. The payment's creation time is its recorded date. No live end-to-end verification was done.
+The expense title row has a mobile-friendly payment form for description, amount, date, payer, and a selectable subset of expense members. It defaults the date to the current local date, the payer to the current user, and all members as participants. Clearing the date falls back to the payment creation date for display and ordering. It previews an even split in the expense currency, using integer minor units and a stable user-ID order for remainder units. The authenticated POST /api/payments path validates payer and participant membership and creates the payment plus all allocations in one transaction. Runtime end-to-end verification remains outstanding.
 
 Plan:
 
-- [x] Add a mobile entry form for item description, amount, payer, and participants; use the recorded timestamp as the payment date.
+- [x] Add a mobile entry form for item description, amount, date, payer, and participants; default the date to today and fall back to creation date when cleared.
 - [x] Allow selecting any non-empty subset of expense members and preview exact equal split amounts, including minor-unit remainder handling.
 - [x] Validate payer and participants are expense members and the split sums exactly to the payment total.
 - [x] Save payment and allocations atomically so partial entries cannot affect balances.
 - [x] Default payer to the current user while allowing another member to be selected.
 - [x] Show a success confirmation and preserve input with visible errors on failure.
 - [ ] Apply `lib/db/migrations/0003_payment_description.sql` with `npm run db:migrate` before using the payment form.
+- [x] Apply `lib/db/migrations/0006_ledger_activity_dates_and_read_cursor.sql` with `npm run db:migrate` before using the date field and date-based activity cursor.
 - [ ] Verify a payment can be created against a live database and that allocation rows match the preview.
 - [ ] Show the updated balance after save when the balance view in task 7 is implemented.
 
@@ -83,18 +84,20 @@ Done when a member can record a taxi, meal, hotel, or other item; the payment an
 
 ## 6. View payments on an expense — Implemented (runtime unverified)
 
-The expense page now shows payments and settlements in one newest-first, mobile-readable ledger. Payment cards display the description, total in the expense currency, payer, recorded date, participants, and shares. Settlement entries show the sender, recipient, amount, and date with the themed green border; payments show themed blue/red borders according to the current user's credit/debt from that item. A pink-toned unread activity line appears at the top of the ledger when payments or settlements are unread. A per-member read-state API and hook persist an activity cursor when the unread boundary is visible, including when the newest activity is a settlement. The boundary stays in its original position during the page visit and shows its refreshed already-read position after leaving and returning. The ledger includes loading, empty, retry, and error states. Existing memberships are initialized by migration 0004, and newly added members receive a baseline when they join.
+The expense page now shows payments and settlements in one newest-first, mobile-readable ledger, ordered by selected date (or creation date if cleared), then descending ID. Cards display the selected/effective date without a time. Payment cards also show the description, total in the expense currency, payer, participants, and shares. Settlement entries show the sender, recipient, and amount with the themed green border; payments show themed blue/red borders according to the current user's credit/debt from that item. A pink-toned unread activity line appears at the top of the ledger when payments or settlements are unread. A per-member read-state API and hook persist a date/ID activity cursor when the unread boundary is visible, including when the newest activity is a settlement. The boundary stays in its original position during the page visit and shows its refreshed already-read position after leaving and returning. The ledger includes loading, empty, retry, and error states.
 
 Plan:
 
 - [x] Decide and implement a payment description field and recorded-date display.
 - [x] Build a newest-first, mobile-readable payment list with total, currency, payer, participants, and each participant's share.
+- [x] Render payment and settlement cards with the user-selected date only (no time); order the combined activity feed by date then descending ID.
 - [x] Provide useful empty, loading, and error states.
 - [x] Refresh the payment list after a payment is created and whenever the expense page loads.
 - [x] Add per-expense, per-member last-read storage, membership-scoped read-state endpoints, and atomic initialization for existing and new members.
 - [x] Add a reusable viewport visibility trigger and read boundary in the newest-first activity ledger; persist read progress through the newest currently loaded activity only when the boundary is seen, and keep the line stable until page re-entry.
 - [x] Show a pink-toned unread activity line at the top of the ledger whenever loaded read state indicates unread payments or settlements.
 - [x] Apply migration `lib/db/migrations/0004_add_expense_user_read_state.sql`; it also adds the unique membership pair index required by this database's legacy `user_expense` schema.
+- [x] Apply migration `lib/db/migrations/0006_ledger_activity_dates_and_read_cursor.sql` before deploying date-based activity ordering/read cursors.
 - [ ] Verify unread/read boundary behavior with multiple members against a live database.
 - [ ] Verify payment and allocation changes refresh the list and balances when editing/deletion and balance flows are implemented.
 
@@ -116,11 +119,11 @@ Done when each member can see their current amount to pay or receive, from whom/
 
 ## 8. Create a settlement — Implemented (runtime unverified)
 
-A settlement form is available from the balance dialog whenever the current user has a negative balance. It defaults the payer to the current user, defaults the payee when there is only one other member, and defaults the amount to the full available balance for the selected payer/payee direction. Either person can be changed and partial amounts are supported. The form previews the remaining amount owed after the entered settlement amount. The server locks the expense row, verifies both members, and recalculates outstanding balances transactionally before accepting a settlement. Settlement transfers now increase the sender's net and decrease the receiver's net, reducing the outstanding amount owed. Success refreshes the balance and combined activity list; failures remain visible in the form.
+A settlement form is available from the balance dialog whenever the current user has a negative balance. It defaults the date to the current local date and supports clearing the date to fall back to the creation date. It defaults the payer to the current user, defaults the payee when there is only one other member, and defaults the amount to the full available balance for the selected payer/payee direction. Either person can be changed and partial amounts are supported. The form previews the remaining amount owed after the entered settlement amount. The server locks the expense row, verifies both members, and recalculates outstanding balances transactionally before accepting a settlement. Settlement transfers now increase the sender's net and decrease the receiver's net, reducing the outstanding amount owed. Success refreshes the balance and combined activity list; failures remain visible in the form.
 
 Plan:
 
-- [x] Add a form in the balance dialog with default payer, single-counterparty payee, and full outstanding amount.
+- [x] Add a form in the balance dialog with a date field, default payer, single-counterparty payee, and full outstanding amount.
 - [x] Allow selecting both parties and entering a partial settlement amount.
 - [x] Verify payer/payee membership, distinct users, and current outstanding amount on the server.
 - [x] Save the settlement and refresh balances and activity only after a successful response, with visible failure recovery.
@@ -130,7 +133,7 @@ Done when a user can record that money was actually paid to another member, with
 
 ## 9. View settlements — Implemented (runtime unverified)
 
-The expense ledger now loads settlements alongside payments and sorts both kinds of entries by their recorded timestamps, newest first. Settlements show sender, recipient, amount, and date with a green left border. Payment cards use a blue left border when the current user is owed money by that item and red when they owe another member.
+The expense ledger now loads settlements alongside payments and sorts both kinds of entries by their selected/effective dates, then descending item IDs. Cards show the selected/effective date only, without a time. Settlements show sender, recipient, and amount with a green left border. Payment cards use a blue left border when the current user is owed money by that item and red when they owe another member.
 
 Plan:
 

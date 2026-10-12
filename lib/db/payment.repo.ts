@@ -32,23 +32,40 @@ export async function hasPaymentCreatorColumn(client: PaymentQueryClient): Promi
   return Boolean(result.rows[0]?.exists)
 }
 
+export async function hasPaymentDateColumn(client: PaymentQueryClient): Promise<boolean> {
+  const result = await client.query<{ exists: boolean }>(
+    `SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = current_schema()
+        AND table_name = 'payments'
+        AND column_name = 'date'
+    ) AS exists`,
+  )
+  return Boolean(result.rows[0]?.exists)
+}
+
 function paymentCreatorColumn(hasCreatorColumn: boolean) {
   return hasCreatorColumn ? 'created_by_user_id' : 'NULL::text AS created_by_user_id'
+}
+
+function paymentDateColumn(hasDateColumn: boolean) {
+  return hasDateColumn ? 'date' : 'NULL::date AS date'
 }
 
 export async function getPaymentFromDatabaseById(
   id: number,
 ): Promise<Payment | null> {
-  const [hasDescription, hasCreator] = await Promise.all([
+  const [hasDescription, hasCreator, hasDate] = await Promise.all([
     hasPaymentDescriptionColumn(pool),
     hasPaymentCreatorColumn(pool),
+    hasPaymentDateColumn(pool),
   ])
   const descriptionColumn = hasDescription
     ? 'description'
     : 'NULL::text AS description'
   const result = await pool.query<Payment>(
     `
-    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, created_at, updated_at, deleted_at, ${paymentCreatorColumn(hasCreator)}
+    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, ${paymentDateColumn(hasDate)}, created_at, updated_at, deleted_at, ${paymentCreatorColumn(hasCreator)}
     FROM payments
     WHERE id = $1 AND deleted_at IS NULL;
     `,
@@ -60,16 +77,17 @@ export async function getPaymentFromDatabaseById(
 export async function getPaymentsFromDatabaseByExpenseId(
   expenseId: number,
 ): Promise<Payment[]> {
-  const [hasDescription, hasCreator] = await Promise.all([
+  const [hasDescription, hasCreator, hasDate] = await Promise.all([
     hasPaymentDescriptionColumn(pool),
     hasPaymentCreatorColumn(pool),
+    hasPaymentDateColumn(pool),
   ])
   const descriptionColumn = hasDescription
     ? 'description'
     : 'NULL::text AS description'
   const result = await pool.query<Payment>(
     `
-    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, created_at, updated_at, deleted_at, ${paymentCreatorColumn(hasCreator)}
+    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, ${paymentDateColumn(hasDate)}, created_at, updated_at, deleted_at, ${paymentCreatorColumn(hasCreator)}
     FROM payments
     WHERE expense_id = $1
     ORDER BY id;
@@ -84,16 +102,17 @@ export async function getPaymentsFromDatabaseByExpenseIdSince(
   since: number,
 ): Promise<Payment[]> {
   const sinceDate = new Date(since)
-  const [hasDescription, hasCreator] = await Promise.all([
+  const [hasDescription, hasCreator, hasDate] = await Promise.all([
     hasPaymentDescriptionColumn(pool),
     hasPaymentCreatorColumn(pool),
+    hasPaymentDateColumn(pool),
   ])
   const descriptionColumn = hasDescription
     ? 'description'
     : 'NULL::text AS description'
   const result = await pool.query<Payment>(
     `
-    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, created_at, updated_at, deleted_at, ${paymentCreatorColumn(hasCreator)}
+    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, ${paymentDateColumn(hasDate)}, created_at, updated_at, deleted_at, ${paymentCreatorColumn(hasCreator)}
     FROM payments
     WHERE expense_id = $1 AND updated_at > $2
     ORDER BY updated_at DESC;
@@ -114,8 +133,11 @@ export async function updatePaymentInDatabase(
     if (!(await hasPaymentCreatorColumn(client))) {
       throw new BadRequestError('Apply database migration 0005_ledger_item_history before editing payments.')
     }
+    if (!(await hasPaymentDateColumn(client))) {
+      throw new BadRequestError('Apply database migration 0006_ledger_activity_dates_and_read_cursor before editing payments.')
+    }
     const existing = await client.query<Payment>(
-      `SELECT id, expense_id, paid_by_user_id, amount, description, created_at, updated_at, deleted_at, created_by_user_id
+      `SELECT id, expense_id, paid_by_user_id, amount, description, date, created_at, updated_at, deleted_at, created_by_user_id
        FROM payments WHERE id = $1 AND deleted_at IS NULL`,
       [id],
     )
@@ -131,7 +153,7 @@ export async function updatePaymentInDatabase(
     if (expense.rowCount === 0) throw new NotFoundError()
 
     const locked = await client.query<Payment>(
-      `SELECT id, expense_id, paid_by_user_id, amount, description, created_at, updated_at, deleted_at, created_by_user_id
+      `SELECT id, expense_id, paid_by_user_id, amount, description, date, created_at, updated_at, deleted_at, created_by_user_id
        FROM payments p
        WHERE p.id = $1 AND p.deleted_at IS NULL
          AND p.created_by_user_id = $2
@@ -171,12 +193,16 @@ export async function updatePaymentInDatabase(
       throw new BadRequestError('The payer and everyone sharing this payment must belong to this expense.')
     }
 
+    const values: unknown[] = [id, patch.paid_by_user_id, patch.amount, patch.description]
+    const dateAssignment = patch.date !== undefined
+      ? (values.push(patch.date), `, date = $${values.length}`)
+      : ''
     const updated = await client.query<Payment>(
       `UPDATE payments
-       SET paid_by_user_id = $2, amount = $3, description = $4, updated_at = NOW()
+       SET paid_by_user_id = $2, amount = $3, description = $4${dateAssignment}, updated_at = NOW()
        WHERE id = $1
-       RETURNING id, expense_id, paid_by_user_id, amount, description, created_at, updated_at, deleted_at, created_by_user_id`,
-      [id, patch.paid_by_user_id, patch.amount, patch.description],
+       RETURNING id, expense_id, paid_by_user_id, amount, description, date, created_at, updated_at, deleted_at, created_by_user_id`,
+      values,
     )
     await client.query(
       `UPDATE payment_allocations SET deleted_at = NOW(), updated_at = NOW()
@@ -214,8 +240,11 @@ export async function deletePaymentFromDatabase(id: number, actorUserId: string)
     if (!(await hasPaymentCreatorColumn(client))) {
       throw new BadRequestError('Apply database migration 0005_ledger_item_history before deleting payments.')
     }
+    if (!(await hasPaymentDateColumn(client))) {
+      throw new BadRequestError('Apply database migration 0006_ledger_activity_dates_and_read_cursor before deleting payments.')
+    }
     const existing = await client.query<Payment>(
-      `SELECT id, expense_id, paid_by_user_id, amount, description, created_at, updated_at, deleted_at, created_by_user_id
+      `SELECT id, expense_id, paid_by_user_id, amount, description, date, created_at, updated_at, deleted_at, created_by_user_id
        FROM payments WHERE id = $1 AND deleted_at IS NULL`,
       [id],
     )
@@ -231,7 +260,7 @@ export async function deletePaymentFromDatabase(id: number, actorUserId: string)
     if (expense.rowCount === 0) throw new NotFoundError()
 
     const locked = await client.query<Payment>(
-      `SELECT id, expense_id, paid_by_user_id, amount, description, created_at, updated_at, deleted_at, created_by_user_id
+      `SELECT id, expense_id, paid_by_user_id, amount, description, date, created_at, updated_at, deleted_at, created_by_user_id
        FROM payments p
        WHERE p.id = $1 AND p.deleted_at IS NULL
          AND p.created_by_user_id = $2

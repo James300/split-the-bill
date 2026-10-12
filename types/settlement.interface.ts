@@ -5,11 +5,15 @@ export interface ISettlement extends IEntity {
   payerUserId: string
   payeeUserId: string
   amount: number
-  date: Date
+  date: string
   createdByUserId: string | null
   deletedAt?: number
 }
 
-export interface ISettlementCreate extends Omit<ISettlement, 'id' | 'createdAt' | 'updatedAt'> {}
+export interface ISettlementCreate extends Omit<ISettlement, 'id' | 'createdAt' | 'updatedAt' | 'date'> {
+  date?: string | null
+}
 
-export interface ISettlementUpdate extends Partial<Omit<ISettlement, 'id' | 'createdAt' | 'updatedAt'>> {}
+export interface ISettlementUpdate extends Partial<Omit<ISettlement, 'id' | 'createdAt' | 'updatedAt' | 'date'>> {
+  date?: string | null
+}

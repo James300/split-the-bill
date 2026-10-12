@@ -1,5 +1,6 @@
 import { Settlement, SettlementCreateInput } from '@/lib/schemas/settlement.schema'
 import { ISettlement, ISettlementCreate } from '@/types/settlement.interface'
+import { toDateOnlyString } from '@/lib/utils/date'
 
 export function mapSettlementInput(settlement: ISettlementCreate): SettlementCreateInput {
   return {
@@ -7,7 +8,7 @@ export function mapSettlementInput(settlement: ISettlementCreate): SettlementCre
     payer_user_id: settlement.payerUserId,
     payee_user_id: settlement.payeeUserId,
     amount: settlement.amount,
-    date: settlement.date,
+    date: settlement.date ?? null,
   }
 }
 
@@ -18,7 +19,7 @@ export function mapSettlementRecord(settlement: Settlement): ISettlement {
     payerUserId: settlement.payer_user_id,
     payeeUserId: settlement.payee_user_id,
     amount: settlement.amount,
-    date: settlement.date,
+    date: toDateOnlyString(settlement.date ?? settlement.created_at),
     createdAt: settlement.created_at.getTime(),
     updatedAt: settlement.updated_at.getTime(),
     createdByUserId: settlement.created_by_user_id ?? null,

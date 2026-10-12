@@ -6,7 +6,7 @@ export const SettlementSchema = z.object({
   payer_user_id: z.string().min(1),
   payee_user_id: z.string().min(1),
   amount: z.number().int().positive().max(2_147_483_647),
-  date: z.coerce.date(),
+  date: z.coerce.date().nullable(),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
   deleted_at: z.coerce.date().nullish(),
@@ -20,7 +20,7 @@ export const SettlementCreateSchema = z.object({
   payer_user_id: z.string().min(1),
   payee_user_id: z.string().min(1),
   amount: z.number().int().positive().max(2_147_483_647),
-  date: z.coerce.date().optional(),
+  date: z.iso.date().nullable().optional(),
 })
 
 export type SettlementCreateInput = z.infer<typeof SettlementCreateSchema>
@@ -29,7 +29,7 @@ export const SettlementUpdateSchema = z.object({
   payer_user_id: z.string().min(1).optional(),
   payee_user_id: z.string().min(1).optional(),
   amount: z.number().int().positive().max(2_147_483_647).optional(),
-  date: z.coerce.date().optional(),
+  date: z.iso.date().nullable().optional(),
 })
 
 export type SettlementUpdateInput = z.infer<typeof SettlementUpdateSchema>

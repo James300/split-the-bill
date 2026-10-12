@@ -22,6 +22,10 @@ expense_user_read_state - This stores each expense member's last-read timestamp;
 cascades to the corresponding read state. Migration 0004 initializes existing memberships as read
 through the migration time.
 
+Payments and settlements have optional date-only activity dates. When unset, the UI and feed use
+the item's creation date. The combined feed sorts by this effective date and then by descending
+item ID. Migration 0006 also stores this activity position in each member's read cursor.
+
 Payments and settlements store the authenticated creator in `created_by_user_id`; legacy rows remain
 unknown rather than inferring identity from the payer or payee. `ledger_item_history.previous_state`
 stores the full prior row and, for payments, its active allocations. Soft-deleted rows remain in

@@ -12,6 +12,7 @@ export function useCreateExpenseSettlement() {
     payerUserId: string
     payeeUserId: string
     amount: number
+    date: string | null
   }) {
     return saveSettlement('/api/settlements', 'POST', input, 'Settlement recorded')
   }
@@ -20,11 +21,13 @@ export function useCreateExpenseSettlement() {
     payerUserId: string
     payeeUserId: string
     amount: number
+    date: string | null
   }) {
     return saveSettlement(`/api/settlements/${settlementId}`, 'PATCH', {
       payer_user_id: input.payerUserId,
       payee_user_id: input.payeeUserId,
       amount: input.amount,
+      date: input.date,
     }, 'Settlement updated')
   }
 

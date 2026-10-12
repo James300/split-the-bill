@@ -2,6 +2,7 @@ import { Payment } from '@/lib/schemas/payment.schema'
 import { PaymentAllocation } from '@/lib/schemas/payment-allocation.schema'
 import { IPayment, IPaymentAllocation } from '@/types/payment.interface'
 import { createNotFoundEntity } from '@/lib/utils/createNotFoundEntity'
+import { toDateOnlyString } from '@/lib/utils/date'
 
 export function mapPaymentRecord(payment: Payment): IPayment {
   return {
@@ -10,6 +11,7 @@ export function mapPaymentRecord(payment: Payment): IPayment {
     paidByUserId: payment.paid_by_user_id,
     amount: payment.amount,
     description: payment.description ?? undefined,
+    date: toDateOnlyString(payment.date ?? payment.created_at),
     createdAt: payment.created_at.getTime(),
     updatedAt: payment.updated_at.getTime(),
     createdByUserId: payment.created_by_user_id ?? null,

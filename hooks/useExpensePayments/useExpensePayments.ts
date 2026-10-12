@@ -8,6 +8,7 @@ export interface ExpensePaymentRecord {
   paidByUserId: string
   amount: number
   description?: string
+  date: string
   createdAt: number
   updatedAt: number
   createdByUserId: string | null
@@ -63,7 +64,7 @@ export function useExpensePayments(expenseId: string, refreshKey: number) {
         if (cancelled) return
 
         setPayments(Object.values(paymentMap).sort((a, b) =>
-          b.createdAt - a.createdAt || b.id - a.id,
+          b.date.localeCompare(a.date) || b.id - a.id,
         ))
         setAllocations(allocationRows)
       } catch (loadError) {

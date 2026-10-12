@@ -4,10 +4,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface ExpenseReadStateResponse {
   lastReadAt: number
+  lastReadActivity: ExpenseActivityPosition | null
+}
+
+export interface ExpenseActivityPosition {
+  activityType: 'payment' | 'settlement'
+  activityId: number
+  activityDate: string
 }
 
 export interface ExpenseActivityCursor {
-  activityType: 'payment' | 'settlement'
+  activityType: ExpenseActivityPosition['activityType']
   activityId: number
 }
 
@@ -22,6 +29,7 @@ async function getErrorMessage(response: Response, fallback: string) {
 
 export function useExpenseReadState(expenseId: string) {
   const [lastReadAt, setLastReadAt] = useState<number | null>(null)
+  const [lastReadActivity, setLastReadActivity] = useState<ExpenseActivityPosition | null>(null)
   const [loadedExpenseId, setLoadedExpenseId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isMarking, setIsMarking] = useState(false)
@@ -45,6 +53,7 @@ export function useExpenseReadState(expenseId: string) {
         const state = await response.json() as ExpenseReadStateResponse
         if (!cancelled) {
           setLastReadAt(state.lastReadAt)
+          setLastReadActivity(state.lastReadActivity)
           setLoadedExpenseId(expenseId)
           setHasMarkedReadThisVisit(false)
         }
@@ -103,6 +112,7 @@ export function useExpenseReadState(expenseId: string) {
   const stateIsCurrent = loadedExpenseId === expenseId
   return {
     lastReadAt: stateIsCurrent ? lastReadAt : null,
+    lastReadActivity: stateIsCurrent ? lastReadActivity : null,
     isLoading: !stateIsCurrent || isLoading,
     isMarking,
     hasMarkedReadThisVisit,

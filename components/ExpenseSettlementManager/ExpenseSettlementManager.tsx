@@ -10,6 +10,7 @@ import type { ExpenseMember } from '@/hooks/useExpenseMembers/useExpenseMembers'
 import { useCreateExpenseSettlement } from '@/hooks/useCreateExpenseSettlement/useCreateExpenseSettlement'
 import type { ExpenseSettlementRecord } from '@/hooks/useExpenseSettlements/useExpenseSettlements'
 import { formatMinorCurrencyAmount, getCurrencyFractionDigits, parseCurrencyAmountToMinorUnits } from '@/lib/utils/money'
+import { getCurrentLocalDateString } from '@/lib/utils/date'
 
 function formatAmountInput(amount: number, currency: string) {
   const digits = getCurrencyFractionDigits(currency)
@@ -43,6 +44,7 @@ export default function ExpenseSettlementManager({
   const [amountOverride, setAmountOverride] = useState<string | null>(
     initialSettlement ? formatAmountInput(initialSettlement.amount, currency) : null,
   )
+  const [date, setDate] = useState(() => initialSettlement?.date ?? getCurrentLocalDateString())
   const balanceByUserId = useMemo(
     () => {
       const result = new Map(balances.map((balance) => [balance.userId, balance.amountNet]))
@@ -95,12 +97,14 @@ export default function ExpenseSettlementManager({
         payerUserId,
         payeeUserId,
         amount: amountInMinorUnits,
+        date: date || null,
       })
       : await createSettlement({
         expenseId: Number(expenseId),
         payerUserId,
         payeeUserId,
         amount: amountInMinorUnits,
+        date: date || null,
       })
     if (saved) onCreated()
   }
@@ -129,6 +133,14 @@ export default function ExpenseSettlementManager({
           }}
         />
       </div>
+
+      <Input
+        id='settlement-date'
+        label='Date'
+        type='date'
+        value={date}
+        onChange={(event) => setDate(event.currentTarget.value)}
+      />
 
       <div className='flex flex-col gap-1.5'>
         <Label id='settlement-payee'>To</Label>

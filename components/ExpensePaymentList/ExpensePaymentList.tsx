@@ -14,11 +14,20 @@ import ExpenseLedgerItemActions from '@/components/ExpenseLedgerItemActions/Expe
 import type { ExpenseSettlementRecord } from '@/hooks/useExpenseSettlements/useExpenseSettlements'
 import type { PaymentAllocationRecord } from '@/hooks/useExpensePayments/useExpensePayments'
 
-function formatPaymentDate(timestamp: number) {
+function formatPaymentDate(value: number | string) {
+  const date = typeof value === 'number' ? new Date(value) : new Date(`${value}T00:00:00`)
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(timestamp))
+  }).format(date)
+}
+
+function compareActivityOrder(
+  left: { date: string; id: number; kind: 'payment' | 'settlement' },
+  right: { date: string; id: number; kind: 'payment' | 'settlement' },
+) {
+  return right.date.localeCompare(left.date)
+    || right.id - left.id
+    || (left.kind === right.kind ? 0 : left.kind === 'settlement' ? -1 : 1)
 }
 
 export default function ExpensePaymentList({
@@ -60,35 +69,42 @@ export default function ExpensePaymentList({
     ...payments.map((payment) => ({
       kind: 'payment' as const,
       record: payment,
+      id: payment.id,
+      date: payment.date,
       createdAt: payment.createdAt,
     })),
     ...settlements.map((settlement) => ({
       kind: 'settlement' as const,
       record: settlement,
+      id: settlement.id,
+      date: settlement.date,
       createdAt: settlement.createdAt,
     })),
-  ].sort((left, right) =>
-    right.createdAt - left.createdAt
-    || (left.kind === right.kind
-      ? right.record.id - left.record.id
-      : left.kind === 'settlement' ? -1 : 1),
-  )
+  ].sort(compareActivityOrder)
 
   const lastReadAt = readState.lastReadAt
-  const unreadCount = lastReadAt === null
-    ? 0
-    : activities.filter((activity) => activity.createdAt > lastReadAt).length
+  const lastReadActivity = readState.lastReadActivity
   let readBoundaryIndex: number | null = null
   if (activities.length > 0 && lastReadAt !== null && !readState.isLoading) {
-    const firstReadActivityIndex = activities.findIndex((activity) => activity.createdAt <= lastReadAt)
-    if (unreadCount === 0) {
-      readBoundaryIndex = 0
-    } else if (firstReadActivityIndex >= 0) {
-      readBoundaryIndex = firstReadActivityIndex
+    if (lastReadActivity) {
+      const lastReadIndex = activities.findIndex((activity) =>
+        activity.kind === lastReadActivity.activityType
+        && activity.record.id === lastReadActivity.activityId,
+      )
+      readBoundaryIndex = lastReadIndex >= 0
+        ? lastReadIndex
+        : activities.findIndex((activity) => compareActivityOrder(activity, {
+          date: lastReadActivity.activityDate,
+          id: lastReadActivity.activityId,
+          kind: lastReadActivity.activityType,
+        }) > 0)
+      if (readBoundaryIndex < 0) readBoundaryIndex = activities.length
     } else {
-      readBoundaryIndex = activities.length
+      const firstReadActivityIndex = activities.findIndex((activity) => activity.createdAt <= lastReadAt)
+      readBoundaryIndex = firstReadActivityIndex >= 0 ? firstReadActivityIndex : activities.length
     }
   }
+  const unreadCount = readBoundaryIndex ?? 0
 
   const markRead = readState.markRead
   const markActivityRead = useCallback(() => {
@@ -216,12 +232,12 @@ export default function ExpensePaymentList({
                               {membersById.get(activity.record.payeeUserId) ?? 'Unknown member'}
                             </p>
                             <p>{formatMinorCurrencyAmount(activity.record.amount, currency)}</p>
-                            <p className='text-xs text-muted-foreground'>Recorded {formatPaymentDate(activity.record.createdAt)}</p>
+                            <p className='text-xs text-muted-foreground'>Recorded {formatPaymentDate(activity.record.date)}</p>
                           </div>
                         </details>
                       </>
                     ) : (
-                      <p className='text-xs text-muted-foreground'>{formatPaymentDate(activity.record.createdAt)}</p>
+                      <p className='text-xs text-muted-foreground'>{formatPaymentDate(activity.record.date)}</p>
                     )}
                     {!activity.record.deletedAt && activity.record.createdByUserId === currentMember?.id && (
                       <ExpenseLedgerItemActions
@@ -349,14 +365,14 @@ function PaymentActivity({
                 <p className='break-words text-sm'>{payment.description || 'Expense item'}</p>
                 <p className='text-sm'>Paid by {membersById.get(payment.paidByUserId) ?? 'Unknown member'}</p>
                 <p className='font-semibold'>{formatMinorCurrencyAmount(payment.amount, currency)}</p>
-                <p className='text-xs text-muted-foreground'>Recorded {formatPaymentDate(payment.createdAt)}</p>
+                <p className='text-xs text-muted-foreground'>Recorded {formatPaymentDate(payment.date)}</p>
                 {details}
               </div>
             </details>
           </>
         ) : (
           <>
-            <p className='text-xs text-muted-foreground'>{formatPaymentDate(payment.createdAt)}</p>
+            <p className='text-xs text-muted-foreground'>{formatPaymentDate(payment.date)}</p>
             {details}
             {canEdit && (
               <ExpenseLedgerItemActions

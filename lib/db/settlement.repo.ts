@@ -133,7 +133,7 @@ export async function createSettlementInDatabase(
 
     const result = await client.query<Settlement>(
       `INSERT INTO settlement (expense_id, payer_user_id, payee_user_id, amount, date, created_by_user_id)
-       VALUES ($1, $2, $3, $4, COALESCE($5, NOW()::date), $6)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id`,
       [
         input.expense_id,
@@ -178,7 +178,7 @@ export async function getSettlementsFromDatabaseByExpenseId(
     SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, ${creatorColumn}
     FROM settlement
     WHERE expense_id = $1
-    ORDER BY date DESC, id;
+    ORDER BY COALESCE(date, created_at::date) DESC, id DESC;
     `,
     [expenseId],
   )

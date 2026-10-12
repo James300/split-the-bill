@@ -5,13 +5,18 @@ export interface IPayment extends IEntity {
   paidByUserId: string
   amount: number
   description?: string
+  date: string
   createdByUserId: string | null
   deletedAt?: number
 }
 
-export interface IPaymentCreate extends Omit<IPayment, 'id' | 'createdAt' | 'updatedAt'> {}
+export interface IPaymentCreate extends Omit<IPayment, 'id' | 'createdAt' | 'updatedAt' | 'date'> {
+  date?: string | null
+}
 
-export interface IPaymentUpdate extends Partial<Omit<IPayment, 'id' | 'createdAt' | 'updatedAt'>> {}
+export interface IPaymentUpdate extends Partial<Omit<IPayment, 'id' | 'createdAt' | 'updatedAt' | 'date'>> {
+  date?: string | null
+}
 
 export interface IPaymentAllocation extends IEntity {
   paymentId: number
@@ -19,6 +24,6 @@ export interface IPaymentAllocation extends IEntity {
   amount: number
 }
 
-export interface IPaymentAllocationCreate extends Omit<IPaymentAllocation, 'createdAt' | 'updatedAt'> {}
+export type IPaymentAllocationCreate = Omit<IPaymentAllocation, 'createdAt' | 'updatedAt'>
 
-export interface IPaymentAllocationUpdate extends Partial<Omit<IPaymentAllocation, 'createdAt' | 'updatedAt'>> {}
+export type IPaymentAllocationUpdate = Partial<Omit<IPaymentAllocation, 'createdAt' | 'updatedAt'>>

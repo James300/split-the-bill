@@ -45,7 +45,7 @@ export function useExpenseSettlements(expenseId: string, refreshKey: number) {
         const settlementMap = await response.json() as Record<string, ExpenseSettlementRecord>
         if (!cancelled) {
           setSettlements(Object.values(settlementMap).sort((left, right) =>
-            right.createdAt - left.createdAt || right.id - left.id,
+            right.date.localeCompare(left.date) || right.id - left.id,
           ))
         }
       } catch (loadError) {
