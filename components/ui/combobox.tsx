@@ -73,7 +73,7 @@ export function Combobox({
           aria-expanded={open}
           className={cn(
             'w-full justify-between text-md md:text-sm p-5! rounded-xl',
-            hasError && 'border-red-500'
+            hasError && 'border-destructive'
           )}
         >
           {!value && placeholder && <div className='text-placeholder'>{placeholder}</div>}
@@ -120,7 +120,7 @@ export function Combobox({
         </Command>
       </PopoverContent>
       {helperText && (
-        <p className='text-red-500 text-sm mt-1'>{helperText}</p>
+        <p className='text-destructive text-sm mt-1'>{helperText}</p>
       )}
     </Popover>
   )

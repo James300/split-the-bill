@@ -114,7 +114,7 @@ Done when each member can see their current amount to pay or receive, from whom/
 
 ## 8. Create a settlement — Implemented (runtime unverified)
 
-A settlement form is available from the balance dialog whenever the current user has a negative balance. It defaults the payer to the current user, defaults the payee when there is only one other member, and defaults the amount to the full available balance for the selected payer/payee direction. Either person can be changed and partial amounts are supported. The server locks the expense row, verifies both members, and recalculates outstanding balances transactionally before accepting a settlement. Settlement transfers now increase the sender's net and decrease the receiver's net, reducing the outstanding amount owed. Success refreshes the balance and combined activity list; failures remain visible in the form.
+A settlement form is available from the balance dialog whenever the current user has a negative balance. It defaults the payer to the current user, defaults the payee when there is only one other member, and defaults the amount to the full available balance for the selected payer/payee direction. Either person can be changed and partial amounts are supported. The form previews the remaining amount owed after the entered settlement amount. The server locks the expense row, verifies both members, and recalculates outstanding balances transactionally before accepting a settlement. Settlement transfers now increase the sender's net and decrease the receiver's net, reducing the outstanding amount owed. Success refreshes the balance and combined activity list; failures remain visible in the form.
 
 Plan:
 

@@ -51,6 +51,9 @@ export default function ExpenseSettlementManager({
     ? formatAmountInput(amountAvailable, currency)
     : '')
   const amountInMinorUnits = parseCurrencyAmountToMinorUnits(amountText, currency)
+  const outstandingAfter = amountInMinorUnits === null
+    ? amountAvailable
+    : Math.max(0, amountAvailable - amountInMinorUnits)
   const amountError = amountText.trim() && amountInMinorUnits === null
     ? `Enter a positive amount with up to ${getCurrencyFractionDigits(currency)} decimal places.`
     : amountInMinorUnits !== null && amountInMinorUnits > amountAvailable
@@ -134,7 +137,7 @@ export default function ExpenseSettlementManager({
         />
         {amountAvailable > 0 && (
           <p className='text-xs text-muted-foreground'>
-            Outstanding: {formatMinorCurrencyAmount(amountAvailable, currency)}
+            Outstanding after: {formatMinorCurrencyAmount(outstandingAfter, currency)}
           </p>
         )}
         {amountError && <p id='settlement-amount-error' className='text-sm text-destructive'>{amountError}</p>}
