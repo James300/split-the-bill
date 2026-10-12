@@ -167,7 +167,7 @@ export default function ExpensePaymentList({
                 />
               )}
               {activity.kind === 'settlement' ? (
-                <li className='rounded-lg border border-t-border border-r-border border-b-border border-l-4 border-l-activity-settlement p-4'>
+                <li className='rounded-lg border border-t-border border-r-border border-b-border border-l-4 !border-l-activity-settlement p-4'>
                   <article className='flex flex-col gap-3'>
                     <div className='flex items-start justify-between gap-3'>
                       <div className='min-w-0'>
@@ -230,9 +230,9 @@ function PaymentActivity({
     .reduce((total, allocation) => total + allocation.amount, 0)
   const currentUserNet = (payment.paidByUserId === currentUserId ? payment.amount : 0) - currentUserShare
   const borderClass = currentUserNet > 0
-    ? 'border-l-activity-credit'
+    ? '!border-l-activity-credit'
     : currentUserNet < 0
-      ? 'border-l-activity-debt'
+      ? '!border-l-activity-debt'
       : ''
 
   return (

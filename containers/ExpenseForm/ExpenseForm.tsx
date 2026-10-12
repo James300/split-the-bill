@@ -7,7 +7,7 @@ import useExpenseSave from '@/hooks/useExpenseSave/useExpenseSave'
 import { useExpenseFormValidation } from '@/hooks/useExpenseFormValidation/useExpenseFormValidation'
 import mapCurrencyNameToCode from '@/lib/utils/currency/mapCurrencyNameToCode'
 
-function ExpenseForm() {
+function ExpenseForm({ onCreated }: { onCreated: () => void }) {
   const [currency, setCurrency] = useState('')
   const [name, setName] = useState('')
   const { errors, validate, clearError, clearAllErrors } = useExpenseFormValidation()
@@ -27,18 +27,21 @@ function ExpenseForm() {
     }
   }, [errors.name, clearError])
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     clearAllErrors()
 
     if (!validate(name, currency)) {
       return
     }
 
-    saveExpense({
+    const saved = await saveExpense({
       name: name.trim(),
       currency: mapCurrencyNameToCode(currency),
     })
-  }, [currency, name, saveExpense, validate, clearAllErrors])
+    if (saved) {
+      onCreated()
+    }
+  }, [currency, name, onCreated, saveExpense, validate, clearAllErrors])
 
   useEffect(() => {
     if (error) {

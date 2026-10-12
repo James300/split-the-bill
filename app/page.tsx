@@ -1,12 +1,11 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/server'
 import { getExpensesByUserId } from '@/lib/services/expense.service'
 import { mapExpenseRecord } from '@/lib/mappers/expenseMapper.function'
 import Page from '@/components/Page/Page'
 import ExpensesList from '@/components/ExpensesList/ExpensesList'
-import Button from '@/components/Button';
-import type { IExpense } from '@/types/expense.interface';
+import ExpenseCreateAction from '@/components/ExpenseCreateAction/ExpenseCreateAction'
+import type { IExpense } from '@/types/expense.interface'
 
 async function getExpenses(userId: string): Promise<IExpense[]> {
   const expenses = await getExpensesByUserId(userId)
@@ -29,7 +28,7 @@ export default async function Home() {
   }
 
   return (
-    <Page title='Expenses'>
+    <Page title='Expenses' titleActions={<ExpenseCreateAction />}>
       {hasLoadError ? (
         <p role='alert' className='text-sm text-destructive'>
           We couldn&apos;t load your expenses. Refresh the page to try again.
@@ -37,11 +36,6 @@ export default async function Home() {
       ) : (
         <ExpensesList expenses={expenses} />
       )}
-      <div className='flex justify-center w-full mt-auto'>
-        <Link href='/expenses/new'>
-          <Button>Add New Expense</Button>
-        </Link>
-      </div>
     </Page>
   );
 }

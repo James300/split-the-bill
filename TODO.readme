@@ -20,17 +20,18 @@ Done when a new user can create an account, remain signed in after redirect, and
 
 ## 2. Create an expense — Implemented (runtime unverified)
 
-A form and authenticated POST /api/expenses path exist; service validation runs and the database operation adds the creator as a member. The client now navigates to the expense list only after a successful response. Failed requests keep the form open and surface an error. No runtime database verification was done.
+A create-expense dialog is opened from the expenses page title-row action. Authenticated POST /api/expenses validation runs, and the database operation adds the creator as a member. Successful saves close the dialog and refresh the expense list; failed requests leave the dialog open and surface an error. No runtime database verification was done.
 
 Plan:
 
-- [x] Navigate only after a successful response; retain form state and display an error on failure.
+- [x] Open expense creation from an accessible, touch-sized title-row icon action in a dialog; remove the separate add button and create page.
+- [x] Close the dialog and refresh the expense list only after a successful response; retain form state and display an error on failure.
 - [x] Confirm name and currency validation in both client and server.
 - [x] Confirm the authenticated creator is the first and only initial member.
 - [x] Verify the created expense appears in the user's list and opens by its returned ID.
 - [x] Verify database failure does not leave an expense without its creator membership.
 
-Done when an authenticated user can create a named, single-currency expense on a phone and lands on a useful expense page; invalid or failed saves stay recoverable.
+Done when an authenticated user can create a named, single-currency expense on a phone and sees it in the refreshed list; invalid or failed saves stay recoverable.
 
 ## 3. List expenses the user belongs to — Implemented (runtime unverified)
 
@@ -39,7 +40,7 @@ The signed-in home page now loads expenses through the member-scoped service, wh
 Plan:
 
 - [x] Verify only the current user's active expenses appear, ordered with recently updated expenses first.
-- [x] Add a helpful empty state with a clear create-expense action.
+- [x] Add a helpful empty state with a clear create-expense action in the page title row.
 - [x] Add a visible error state; check the layout on a narrow phone viewport.
 - [ ] Verify expenses joined by invitation appear in the same list.
 

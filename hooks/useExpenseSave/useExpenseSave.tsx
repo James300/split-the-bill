@@ -22,12 +22,14 @@ function useExpenseSave() {
 
       if (!response.ok) {
         setError('Failed to save expense. Please try again later.')
-        return
+        return false
       }
 
-      router.push('/')
+      router.refresh()
+      return true
     } catch {
       setError('Failed to save expense. Please try again later.')
+      return false
     } finally {
       setIsSaving(false)
     }

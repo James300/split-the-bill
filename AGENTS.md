@@ -10,6 +10,8 @@ Treat mobile web as the primary use case. People should be able to view the expe
 
 Use the Page title row for compact page-level actions: keep the title at the start, align actions at the end, and use accessible icon buttons with touch-sized hit areas on mobile. Put larger or multi-step actions in a dialog instead of crowding the page header. Keep request and interaction logic in focused hooks when it makes UI components simpler to read and maintain.
 
+On the expenses list, provide one add-expense icon action in the title row. It opens a create-expense dialog; after a successful save, close the dialog and refresh the list. Do not show a separate add-expense button or dedicated create-expense page.
+
 Prefer shared UI components from `components/` over raw HTML controls or one-off styling. Extend a shared component when the needed behavior or visual variant is missing, and use the shared button, input, icon-button, and dialog components in feature UI.
 
 Keep foreground and background color pairs accessible in both light and dark themes (at least 4.5:1 contrast for normal text). Hover colors should remain within the same palette hue and darken the corresponding base color slightly.
