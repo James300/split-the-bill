@@ -167,7 +167,7 @@ export default function ExpensePaymentList({
                 />
               )}
               {activity.kind === 'settlement' ? (
-                <li className='rounded-lg border border-border border-l-4 border-l-activity-settlement p-4'>
+                <li className='rounded-lg border border-t-border border-r-border border-b-border border-l-4 border-l-activity-settlement p-4'>
                   <article className='flex flex-col gap-3'>
                     <div className='flex items-start justify-between gap-3'>
                       <div className='min-w-0'>
@@ -236,7 +236,7 @@ function PaymentActivity({
       : ''
 
   return (
-    <li className={`rounded-lg border border-border p-4 ${borderClass ? `border-l-4 ${borderClass}` : ''}`}>
+    <li className={`rounded-lg border border-t-border border-r-border border-b-border p-4 ${borderClass ? `border-l-4 ${borderClass}` : ''}`}>
       <article className='flex flex-col gap-3'>
         <div className='flex items-start justify-between gap-3'>
           <div className='min-w-0'>
