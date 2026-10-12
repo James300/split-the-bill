@@ -5,6 +5,8 @@ export interface IPayment extends IEntity {
   paidByUserId: string
   amount: number
   description?: string
+  createdByUserId: string | null
+  deletedAt?: number
 }
 
 export interface IPaymentCreate extends Omit<IPayment, 'id' | 'createdAt' | 'updatedAt'> {}

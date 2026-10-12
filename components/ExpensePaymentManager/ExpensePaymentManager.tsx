@@ -8,6 +8,8 @@ import Switch from '@/components/Switch/Switch'
 import Label from '@/components/typography/Label/Label'
 import type { useExpenseMembers } from '@/hooks/useExpenseMembers/useExpenseMembers'
 import { useCreateExpensePayment } from '@/hooks/useCreateExpensePayment/useCreateExpensePayment'
+import type { ExpensePaymentRecord } from '@/hooks/useExpensePayments/useExpensePayments'
+import type { PaymentAllocationRecord } from '@/hooks/useExpensePayments/useExpensePayments'
 import { formatMinorCurrencyAmount, getCurrencyFractionDigits, parseCurrencyAmountToMinorUnits, sortMemberIds } from '@/lib/utils/money'
 
 type MembersState = ReturnType<typeof useExpenseMembers>
@@ -25,23 +27,38 @@ function splitMinorAmount(amount: number, participantIds: string[]) {
 export default function ExpensePaymentManager({
   expenseId,
   membersState,
+  initialPayment,
+  initialAllocations,
   onCreated,
 }: {
   expenseId: string
   membersState: MembersState
+  initialPayment?: ExpensePaymentRecord
+  initialAllocations?: PaymentAllocationRecord[]
   onCreated: () => void
 }) {
   const { members, currency, isLoading, error: membersError, reload } = membersState
-  const { createPayment, isSaving, error: saveError } = useCreateExpensePayment()
-  const [description, setDescription] = useState('')
-  const [amountText, setAmountText] = useState('')
+  const { createPayment, updatePayment, isSaving, error: saveError } = useCreateExpensePayment()
+  const [descriptionOverride, setDescriptionOverride] = useState<string | null>(null)
+  const [amountOverride, setAmountOverride] = useState<string | null>(null)
   const [selectedPayerUserId, setSelectedPayerUserId] = useState<string | null>(null)
   const [selectedParticipantUserIds, setSelectedParticipantUserIds] = useState<string[] | null>(null)
+  const isEditing = Boolean(initialPayment)
+  const description = descriptionOverride ?? initialPayment?.description ?? ''
+  const amountText = amountOverride
+    ?? (initialPayment && currency ? formatAmountInput(initialPayment.amount, currency) : '')
   const paidByUserId = selectedPayerUserId
+    ?? initialPayment?.paidByUserId
     ?? members.find((member) => member.isCurrentUser)?.id
     ?? members[0]?.id
     ?? ''
-  const participantUserIds = selectedParticipantUserIds ?? members.map((member) => member.id)
+  const participantUserIds = useMemo(
+    () => selectedParticipantUserIds
+      ?? (initialPayment
+        ? initialAllocations?.map((allocation) => allocation.user_id) ?? []
+        : members.map((member) => member.id)),
+    [initialAllocations, initialPayment, members, selectedParticipantUserIds],
+  )
 
   const amountInMinorUnits = useMemo(
     () => currency ? parseCurrencyAmountToMinorUnits(amountText, currency) : null,
@@ -84,14 +101,21 @@ export default function ExpensePaymentManager({
     event.preventDefault()
     if (!amountInMinorUnits || !paidByUserId || participantUserIds.length === 0 || amountError) return
 
-    const created = await createPayment({
-      expenseId: Number(expenseId),
-      description: description.trim(),
-      amount: amountInMinorUnits,
-      paidByUserId,
-      participantUserIds,
-    })
-    if (created) onCreated()
+    const saved = isEditing && initialPayment
+      ? await updatePayment(initialPayment.id, {
+        description: description.trim(),
+        amount: amountInMinorUnits,
+        paid_by_user_id: paidByUserId,
+        participant_user_ids: participantUserIds,
+      })
+      : await createPayment({
+        expenseId: Number(expenseId),
+        description: description.trim(),
+        amount: amountInMinorUnits,
+        paidByUserId,
+        participantUserIds,
+      })
+    if (saved) onCreated()
   }
 
   const isFormValid = description.trim().length > 0
@@ -112,7 +136,7 @@ export default function ExpensePaymentManager({
           maxLength={255}
           required
           autoComplete='off'
-          onChange={(event) => setDescription(event.currentTarget.value)}
+          onChange={(event) => setDescriptionOverride(event.currentTarget.value)}
         />
       </div>
 
@@ -127,7 +151,7 @@ export default function ExpensePaymentManager({
           value={amountText}
           required
           aria-describedby={amountError ? 'payment-amount-error' : undefined}
-          onChange={(event) => setAmountText(event.currentTarget.value)}
+          onChange={(event) => setAmountOverride(event.currentTarget.value)}
         />
         {amountError && <p id='payment-amount-error' className='text-sm text-destructive'>{amountError}</p>}
       </div>
@@ -176,8 +200,15 @@ export default function ExpensePaymentManager({
       {(membersError || saveError) && <p role='alert' className='text-sm text-destructive'>{saveError ?? membersError}</p>}
 
       <Button type='submit' className='min-h-11 w-full' disabled={!isFormValid || isSaving}>
-        {isSaving ? 'Saving payment…' : 'Save payment'}
+        {isSaving ? (isEditing ? 'Saving changes…' : 'Saving payment…') : (isEditing ? 'Save changes' : 'Save payment')}
       </Button>
     </form>
   )
+}
+
+function formatAmountInput(amount: number, currency: string) {
+  const digits = getCurrencyFractionDigits(currency)
+  return digits === 0
+    ? String(amount)
+    : (amount / (10 ** digits)).toFixed(digits)
 }

@@ -47,6 +47,10 @@ Keep foreground and background color pairs accessible in both light and dark the
 - Track a last-read timestamp per expense member. Existing memberships start as read through the migration time; new members start as read through the time they join. In the newest-first payment ledger, show a boundary between unread and already-read payments (or after all unread payments when none have been read yet). Advance read state only when that boundary is visible, and only through the newest payment currently loaded so later payments remain unread.
 - Track the same last-read cursor across payments, settlements, and future activity types in the combined expense feed. Persist when the boundary is seen, but keep its displayed position and label stable for the current page visit; show the updated already-read boundary after the member leaves and returns to the expense.
 - When unread payments or settlements exist, show a pink-toned unread activity line at the top of the expense activity list while preserving the in-feed read boundary behavior.
+- A payment or settlement can be edited or soft-deleted only by the authenticated user recorded as its creator, who must still be an expense member. Record creator IDs on new ledger items; do not infer creator identity from payer/payee for legacy items, and do not expose edit/delete controls when creator identity is unknown.
+- Preserve deleted payments and settlements as tombstones in the combined activity feed. Retain their item data for an expandable deleted-item detail, but exclude them from active balance and allocation calculations.
+- Before applying a payment or settlement edit or deletion, atomically store a complete snapshot of the prior state in a separate ledger history table. Do not add an edit-history browsing UI or deletion-reason notes unless requested.
+- Reuse the payment/settlement entry dialogs for edits with edit-specific titles and save actions. Confirm deletions in a simple dialog. Validate all changes on the server, update derived balances from active ledger items only, and provide visible success and failure feedback.
 
 ### Balances and settlements
 
@@ -58,6 +62,15 @@ Keep foreground and background color pairs accessible in both light and dark the
 - Recording a settlement updates the displayed outstanding balances, but never modifies the underlying payments or allocations. Show payments and settlements in one newest-first ledger; identify settlements with a green left border and payer/payee/amount/date. Identify payments that put the current user in credit with a blue left border and payments that put them in debt with a red left border.
 - Use shared theme colors for settlement, credit, and debt activity borders in that order (green, blue, red), with light/dark variants. Dialog close buttons must be visible on dark backgrounds and should not receive initial focus when a dialog opens; move initial focus to the dialog content instead.
 - Use exact minor-unit arithmetic and clearly label the expense currency everywhere money is displayed or entered.
+
+### Offline access and queued activity
+
+- Allow an authenticated member to view expense data offline only for expenses and data previously loaded while online. Cache expense store slices in IndexedDB and hydrate them after mount; do not use browser-persisted state to render server output.
+- Treat cached expense data as potentially stale and label offline views accordingly. When online, fetch server state as the source of truth and reconcile the cache; never imply that an offline payment or settlement has been committed or included in authoritative balances.
+- While offline, allow members to create payment and settlement drafts and persist them in an IndexedDB outbox. Scope cached data and drafts to the signed-in account; do not expose one account's cached data after sign-out or account switch.
+- When connectivity returns, let the member review each pending draft before sending it. Show drafts read-only first, with explicit submit, edit, or delete choices. Reuse the existing payment or settlement form for editing; show the current item position and total pending count (for example, “2 of 4”) above the review dialog.
+- Replay approved drafts through the existing authenticated APIs and server-side validation. Keep a draft until it is successfully submitted or explicitly deleted; show replay/validation failures and allow recovery without silently losing or duplicating a change. Reconcile against current server state before completing synchronization, since membership and balances may have changed while offline.
+- Do not store authentication secrets or invitation tokens in the offline cache. Clear account-scoped cache and drafts when the user signs out or changes accounts, with clear confirmation if pending drafts would be discarded.
 
 ### Authorization and data handling
 

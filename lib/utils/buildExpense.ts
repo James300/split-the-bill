@@ -24,9 +24,15 @@ export function buildExpenseReadModel({
   paymentAllocations: PaymentAllocation[]
   settlements: Settlement[]
 }): ExpenseParticipantBalance[] {
-  const userPaymentsMap = getUserPaymentsMap(payments)
-  const userPaymentAllocationsMap = getUserPaymentAllocationsMap(paymentAllocations)
-  const { payerSettlementsMap, payeeSettlementsMap } = getUserSettlementsMap(settlements)
+  const activePayments = payments.filter((payment) => !payment.deleted_at)
+  const activePaymentIds = new Set(activePayments.map((payment) => payment.id))
+  const activeAllocations = paymentAllocations.filter((allocation) =>
+    !allocation.deleted_at && activePaymentIds.has(allocation.payment_id),
+  )
+  const activeSettlements = settlements.filter((settlement) => !settlement.deleted_at)
+  const userPaymentsMap = getUserPaymentsMap(activePayments)
+  const userPaymentAllocationsMap = getUserPaymentAllocationsMap(activeAllocations)
+  const { payerSettlementsMap, payeeSettlementsMap } = getUserSettlementsMap(activeSettlements)
 
   return userIds.map((userId) => {
     const userPayments = userPaymentsMap[userId] ?? []

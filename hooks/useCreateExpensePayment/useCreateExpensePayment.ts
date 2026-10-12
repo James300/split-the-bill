@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
-import type { ExpensePaymentCreateInput } from '@/lib/schemas/payment.schema'
+import type { ExpensePaymentCreateInput, PaymentUpdateInput } from '@/lib/schemas/payment.schema'
 
 async function getErrorMessage(response: Response) {
   try {
@@ -19,11 +19,24 @@ export function useCreateExpensePayment() {
   const [error, setError] = useState<string | null>(null)
 
   const createPayment = useCallback(async (input: ExpensePaymentCreateInput) => {
+    return savePayment('/api/payments', 'POST', input, 'Payment added')
+  }, [])
+
+  const updatePayment = useCallback(async (paymentId: number, input: PaymentUpdateInput) => {
+    return savePayment(`/api/payments/${paymentId}`, 'PATCH', input, 'Payment updated')
+  }, [])
+
+  async function savePayment(
+    url: string,
+    method: 'POST' | 'PATCH',
+    input: ExpensePaymentCreateInput | PaymentUpdateInput,
+    successMessage: string,
+  ) {
     setIsSaving(true)
     setError(null)
     try {
-      const response = await fetch('/api/payments', {
-        method: 'POST',
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
       })
@@ -31,7 +44,7 @@ export function useCreateExpensePayment() {
         throw new Error(await getErrorMessage(response))
       }
 
-      toast.success('Payment added', { id: 'expense-payment-action' })
+      toast.success(successMessage, { id: 'expense-payment-action' })
       return true
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Could not save this payment.')
@@ -39,7 +52,7 @@ export function useCreateExpensePayment() {
     } finally {
       setIsSaving(false)
     }
-  }, [])
+  }
 
-  return { createPayment, isSaving, error }
+  return { createPayment, updatePayment, isSaving, error }
 }

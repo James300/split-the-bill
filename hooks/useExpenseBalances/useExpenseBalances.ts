@@ -35,7 +35,7 @@ async function getErrorMessage(response: Response, fallback: string) {
   }
 }
 
-export function useExpenseBalances(expenseId: string, enabled: boolean) {
+export function useExpenseBalances(expenseId: string, enabled: boolean, refreshKey = 0) {
   const [balances, setBalances] = useState<ExpenseBalance[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -73,7 +73,7 @@ export function useExpenseBalances(expenseId: string, enabled: boolean) {
     return () => {
       cancelled = true
     }
-  }, [enabled, expenseId, retryKey])
+  }, [enabled, expenseId, refreshKey, retryKey])
 
   const retry = useCallback(() => setRetryKey((current) => current + 1), [])
 

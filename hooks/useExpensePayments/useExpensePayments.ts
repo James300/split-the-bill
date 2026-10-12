@@ -10,9 +10,11 @@ export interface ExpensePaymentRecord {
   description?: string
   createdAt: number
   updatedAt: number
+  createdByUserId: string | null
+  deletedAt?: number
 }
 
-interface PaymentAllocationRecord {
+export interface PaymentAllocationRecord {
   payment_id: number
   user_id: string
   amount: number

@@ -9,14 +9,31 @@ export const PaymentSchema = z.object({
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
   deleted_at: z.coerce.date().nullish(),
+  created_by_user_id: z.string().min(1).nullable().optional(),
 })
 
 export type Payment = z.infer<typeof PaymentSchema>
 
 export const PaymentUpdateSchema = z.object({
-  paid_by_user_id: z.string().min(1).optional(),
-  amount: z.number().int().positive().optional(),
-  description: z.string().trim().min(1).max(255).optional(),
+  paid_by_user_id: z.string().min(1).max(64),
+  amount: z.number().int().positive().max(2_147_483_647),
+  description: z.string().trim().min(1).max(255),
+  participant_user_ids: z.array(z.string().min(1).max(64)).min(1).max(100),
+}).superRefine((input, context) => {
+  if (new Set(input.participant_user_ids).size !== input.participant_user_ids.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['participant_user_ids'],
+      message: 'A person can only be included once.',
+    })
+  }
+  if (input.amount < input.participant_user_ids.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['amount'],
+      message: 'The total is too small to give each participant a share.',
+    })
+  }
 })
 
 export type PaymentUpdateInput = z.infer<typeof PaymentUpdateSchema>

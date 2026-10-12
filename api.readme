@@ -16,22 +16,25 @@ The BE will map outgoing data to the BE from camelCase to snake_case.
 
 | Method | Endpoint                   | Purpose                      | Request Body           | Response         |
 | ------ | -------------------------- | ---------------------------- | -----------------------| ---------------- |
-| GET    | `/api/payments?expense_id=` | List payments for an expense | —                      | `Payment[]`      |
+| GET    | `/api/payments?expense_id=` | List active and deleted payments for an expense | — | `Payment[]` |
 | GET    | `/api/payments/:id`        | Get payment details          | —                      | `Payment`        |
 | POST   | `/api/payments`            | Create payment               | PaymentInput           | `Payment`        |
-| UPDATE | `/api/payments/:id`        | Update payment               | PaymentUpdateInput     | `Payment`        |
-| DELETE | `/api/payments/:id`        | Delete payment               | —                      | `200`            |
+| PATCH  | `/api/payments/:id`        | Update payment and all shares | PaymentUpdateInput    | `Payment`        |
+| DELETE | `/api/payments/:id`        | Soft-delete payment          | —                      | `204`            |
 
+Only the recorded creator can edit or delete a payment. Payment edits replace the full participant set atomically; independent allocation PATCH/DELETE requests are rejected. Deleted payments remain in the activity response with `deletedAt` and retained details, but do not contribute to balances.
 
 ### Settlements
 
-| Method | Endpoint                      | Purpose                         | Request Body            | Response       |
-| ------ | ----------------------------- | ------------------------------- | ----------------------- | -------------- |
-| GET    | `/api/settlements?expense_id=` | List settlements for an expense | —                       | `Settlement[]` |
+| Method | Endpoint                      | Purpose                            | Request Body            | Response       |
+| ------ | ----------------------------- | ---------------------------------- | ----------------------- | -------------- |
+| GET    | `/api/settlements?expense_id=` | List active and deleted settlements | —                     | `Settlement[]` |
 | GET    | `/api/settlements/:id`        | Settlement detail               | —                       | `Settlement`   |
 | POST   | `/api/settlements`            | Create settlement               | `SettlementInput`       | `Settlement`   |
 | PATCH  | `/api/settlements/:id`        | Update settlement               | `SettlementUpdateInput` | `Settlement`   |
-| DELETE | `/api/settlements/:id`        | Delete settlement               | —                       | `200`          |
+| DELETE | `/api/settlements/:id`        | Soft-delete settlement          | —                       | `204`          |
+
+Only the recorded creator can edit or delete a settlement. Deleted settlements remain visible as activity tombstones, but do not contribute to balances.
 
 
 ### Expense Invitations

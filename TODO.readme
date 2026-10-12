@@ -140,18 +140,104 @@ Plan:
 
 Done when every expense member can review repayments and reconcile them with the remaining balance.
 
+## 10. Edit and delete payments and settlements — Partial (server and UI paths implemented; migration and runtime checks pending)
+
+Allow only the authenticated user who created a payment or settlement to edit or soft-delete it. Record the creator on each newly created ledger item; do not infer legacy creators from the payer or settlement sender. Existing rows whose creator cannot be established safely remain visible but cannot be edited or deleted. Keep deleted rows in the activity ledger as tombstones so members can see that an item was deleted and expand it to inspect its retained details. For each edit, save a full snapshot of the previous state in a separate history table before applying the new state. An edit-history browsing UI and optional deletion-reason notes are out of scope for this phase.
+
+Plan:
+
+- [x] Add migration `lib/db/migrations/0005_ledger_item_history.sql` for transaction creator IDs and complete prior-state history. Legacy creator IDs remain unknown.
+- [x] Record the authenticated creator when creating payments and settlements.
+- [x] Enforce creator-only edit/delete in server services and mutation transactions; require current expense membership and return not-found for non-creators. Independent payment-allocation mutation endpoints are rejected so edits remain atomic.
+- [x] Implement payment edits transactionally, including a previous-state snapshot and complete allocation replacement. Revalidate payer/participants and membership, split in exact minor units, and preserve the item ID and creation time.
+- [x] Implement settlement edits transactionally, snapshotting the prior state and revalidating membership, distinct payer/payee, positive amount, and outstanding amount in the edited direction.
+- [x] Make soft deletion transactional with a prior-state snapshot; deleted payments and settlements remain out of balances while retaining the details used by the ledger.
+- [x] Return deleted payment/settlement rows in the combined activity feed with a clear deleted indicator and expandable details; do not add permanent-delete or restore behavior.
+- [x] Reuse the payment and settlement dialogs for edits with edit-specific titles and save actions. Show edit/delete actions only for the recorded creator, confirm deletion in a dialog, and provide visible success/error feedback.
+- [x] Refresh the activity list and open balance view after successful edits/deletions; Phase 2 realtime broadcasts remain planned separately.
+- [ ] Add tests for creator/non-creator authorization, unknown legacy creators, history snapshots, atomic allocation replacement, settlement overpayment and direction changes, soft-deleted rows in ledger but not balances, and failure rollback.
+- [ ] Apply migration `0005_ledger_item_history.sql` with `npm run db:migrate` and verify migration status.
+
+Done when creators can edit or soft-delete their payments and settlements, other members see the updated or visibly deleted item, the previous state is retained for future audit UI, balances reflect only active ledger items, and no user can change another creator's ledger item. Source paths are implemented; migration application and live database verification remain outstanding.
+
 ## Additional core work
 
 - [x] Add a member list dialog to the expense title row; the creator can remove members with no active ledger history. (Runtime unverified.)
 - [ ] Apply `lib/db/migrations/0002_expense_creator.sql` with `npm run db:migrate` before deploying this change; existing expenses retain unknown creator status.
 - [ ] Build the expense detail screen for payment, balance, and settlement flows; it is currently a placeholder.
-- [ ] Define safe edit/delete rules for expenses, payments, allocations, and settlements, including the effect on other members' balances and history.
+- [ ] Define safe edit/delete rules for expenses and membership metadata, including the effect on other members' balances and history. Payment and settlement edit/delete behavior is tracked in task 10.
 - [x] Define membership removal behavior: only the recorded creator may remove another member, and removal is blocked when active payment, allocation, or settlement history exists. Existing expenses without creator metadata cannot offer removal yet.
 - [ ] Add server-side cross-record validation and database constraints for membership, allocation totals, and valid settlement directions.
 - [ ] Decide whether trip expenses need receipt/photo attachments, dates, categories, or notes. These help trip tracking but can follow the ledger MVP.
 - [x] Keep themed text/background pairs at WCAG AA contrast for normal text in light and dark themes; retain each color's hue while slightly darkening its hover state.
 - [ ] Verify accessible mobile layout, touch targets, keyboard behavior, offline/network failure recovery, and currency formatting.
 - [ ] Add automated coverage for balance calculations and domain validation, plus an end-to-end smoke path through sign-up, invite join, payment, and settlement when requested/available.
+
+## Phase 2: Multiplayer expense updates — Not started
+
+Add authenticated, expense-scoped realtime subscriptions so members viewing the same expense see newly committed payments and settlements without waiting for a page refresh or another API read. The current ledger and balance hooks load their own data, and payment/settlement saves trigger a page-level refresh; Phase 2 should move these views onto shared expense state that can be updated from either the existing initial reads or realtime events. Keep HTTP writes and their validation authoritative. Publishing a realtime event must never be required to commit a transaction.
+
+### 2.1 Choose and verify realtime delivery
+
+- [ ] Confirm the deployment platform supports the required WebSocket lifecycle; choose a managed WebSocket/pub-sub service or a separately deployable WebSocket gateway that fits the production topology.
+- [ ] Define connection authentication, per-expense subscription authorization, reconnect behavior, event ordering/delivery guarantees, and how clients detect missed events. Do not expose broker credentials to clients.
+- [ ] Define a versioned, typed event envelope with a unique event ID, expense ID, event type, and committed activity data. Include all payment allocations in the payment-created event so clients can apply one complete payment atomically.
+- [ ] Document delivery failure behavior: persist the database write regardless of publish failure, report/monitor server-side publish failures, and reconcile the subscribed expense from the API on initial load and after reconnect or a detected event gap.
+
+### 2.2 Broadcast and apply payment and settlement changes
+
+- [ ] Publish payment-created events only after the payment and all allocations commit; publish settlement-created events only after the settlement commits. Reuse the existing domain services and mapped records rather than trusting client-supplied event data.
+- [ ] Check current expense membership when a connection subscribes and prevent non-members from joining or receiving that expense's stream. Ensure removed members cannot keep receiving events on an existing connection.
+- [ ] Extract or introduce shared client-side state for the expense activity and derived balances, and have the ledger and balance view read from that same state.
+- [ ] On a valid event, merge the new payment plus allocations or settlement into the store, deduplicate repeated events, and keep the newest-first ledger ordering stable without refetching. Make the sender's POST response and the corresponding broadcast safe to apply in either order.
+- [ ] Recalculate balances from the updated payment allocations and settlements using the existing domain formula and exact integer minor units; update the balance view from the shared state without a balances API refetch.
+- [ ] Preserve activity read-cursor behavior when realtime items arrive: new activity remains unread, and the current page visit's existing read-boundary position remains stable.
+- [ ] Keep loading, error, and retry behavior clear for initial data and subscription failures; close subscriptions when leaving an expense and clean up listeners on reconnect/unmount.
+- [ ] Add tests for payment events with allocations, settlement balance deltas, duplicate/out-of-order events, concurrent writes, reconnect reconciliation, authorization, and publish failure. Verify that receiving a normal event updates the ledger and balances without additional GET requests.
+
+Done when two authenticated members viewing one expense see each newly committed payment and settlement promptly in the shared ledger and updated balances, with no client refetch for normally delivered events, and with secure recovery when events are missed.
+
+### 2.3 Broadcast member joins — Lower priority
+
+- [ ] After payment and settlement delivery is stable, publish an expense-member-joined event only after membership commits.
+- [ ] Include only the member identity fields already permitted in the expense member list; do not include private account or ledger data.
+- [ ] Update the members state for clients subscribed to that expense without refetching, deduplicate/reconcile events, and retain existing member loading behavior.
+- [ ] Verify members see a newly joined member promptly and that non-members cannot subscribe to or observe the membership event.
+
+Done when members viewing an expense see a newly joined member without reloading, while expense membership and profile privacy checks remain enforced.
+
+## Phase 3: Offline expense access and sync — Not started
+
+Build on the shared expense state from Phase 2. Persist loaded expense store slices in IndexedDB so an authenticated member can revisit previously viewed expenses while offline. Online server responses remain authoritative and refresh the cached state. While offline, allow creating payment and settlement drafts in a durable outbox; on reconnect, present each draft for explicit review before replaying it through the existing APIs.
+
+### 3.1 Cache and render previously viewed expenses offline
+
+- [ ] Define which previously fetched expense data is cached in IndexedDB, its schema/versioning and expiration policy, and how it maps to Phase 2 store slices.
+- [ ] Partition cached data by authenticated account and expense; clear or switch account-scoped data safely on sign-out/account change. Never cache session credentials or invitation tokens.
+- [ ] Hydrate IndexedDB after mount so server and first-client renders stay consistent. Make the app shell and expense route usable offline after an online visit, and show a clear offline/stale-data indicator.
+- [ ] When online, fetch current expense data from the server and reconcile the store and IndexedDB cache; do not treat cached data as current server truth.
+- [ ] Verify users can view previously loaded expenses and ledger data offline, cannot access uncached expenses offline, and do not see one account's cached data after switching accounts.
+
+### 3.2 Queue offline payment and settlement drafts
+
+- [ ] Reuse existing payment and settlement form validation and currency/minor-unit rules when creating drafts offline; persist complete drafts, including payment allocations, in an IndexedDB outbox.
+- [ ] Clearly distinguish pending offline drafts from committed activity. Do not include them in authoritative balances or present them as server-saved ledger items.
+- [ ] Define stable draft IDs and idempotency keys so replay retries or an uncertain network response cannot create duplicate payments or settlements.
+- [ ] Preserve drafts across reloads and temporary connection loss. Handle authentication expiry and changed expense membership without discarding drafts or bypassing server authorization.
+- [ ] Verify queued data is scoped to the creating account and is not silently lost on browser reload, tab close, or transient storage/network errors.
+
+### 3.3 Review, edit, submit, or delete drafts on reconnect
+
+- [ ] Detect reconnection and present pending drafts one at a time in a review dialog; initially show each draft read-only with explicit submit, edit, and delete actions.
+- [ ] Reuse the existing payment or settlement form to edit its matching draft. Before any submit, let the user confirm the reviewed values; deleting a draft must be an explicit choice.
+- [ ] Show progress above the dialog (for example, “1 of 4 — 3 remaining”) so the user knows which draft is being reviewed and how many remain.
+- [ ] Submit approved drafts through the existing authenticated payment/settlement APIs, retaining the server's validation and transaction behavior. Reconcile current expense data before replay because balances, membership, or authorization may have changed while offline.
+- [ ] On validation, authorization, or network failure, keep the draft available with a clear error and recovery action; do not silently skip it or erase it. Make retries idempotent.
+- [ ] Remove each draft from IndexedDB only after successful server confirmation or explicit user deletion; preserve all unresolved drafts if the user leaves or reloads the review flow.
+- [ ] After all drafts are submitted or deleted, refetch authoritative expense data, update the shared store and cache, and verify the outbox has no finalized rows remaining.
+- [ ] Test offline creation and reload, reconnect review ordering/progress, edit and delete, partial replay, authorization/balance conflicts, interrupted responses, duplicate prevention, and account switching.
+
+Done when a member can reopen a previously viewed expense offline, identify cached information as potentially stale, queue payment or settlement drafts without claiming they are committed, then review and explicitly submit/edit/delete every draft after reconnecting. Successful changes appear once in the authoritative ledger and balances; unresolved drafts remain recoverable.
 
 ## Review notes
 

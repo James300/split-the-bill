@@ -4,10 +4,6 @@ import { IPayment, IPaymentAllocation } from '@/types/payment.interface'
 import { createNotFoundEntity } from '@/lib/utils/createNotFoundEntity'
 
 export function mapPaymentRecord(payment: Payment): IPayment {
-  if (payment.deleted_at) {
-    return createNotFoundEntity(payment.id) as IPayment
-  }
-
   return {
     id: payment.id,
     expenseId: payment.expense_id,
@@ -16,6 +12,8 @@ export function mapPaymentRecord(payment: Payment): IPayment {
     description: payment.description ?? undefined,
     createdAt: payment.created_at.getTime(),
     updatedAt: payment.updated_at.getTime(),
+    createdByUserId: payment.created_by_user_id ?? null,
+    ...(payment.deleted_at ? { deletedAt: payment.deleted_at.getTime() } : {}),
   }
 }
 

@@ -8,6 +8,7 @@ import Label from '@/components/typography/Label/Label'
 import type { ExpenseBalance } from '@/hooks/useExpenseBalances/useExpenseBalances'
 import type { ExpenseMember } from '@/hooks/useExpenseMembers/useExpenseMembers'
 import { useCreateExpenseSettlement } from '@/hooks/useCreateExpenseSettlement/useCreateExpenseSettlement'
+import type { ExpenseSettlementRecord } from '@/hooks/useExpenseSettlements/useExpenseSettlements'
 import { formatMinorCurrencyAmount, getCurrencyFractionDigits, parseCurrencyAmountToMinorUnits } from '@/lib/utils/money'
 
 function formatAmountInput(amount: number, currency: string) {
@@ -23,6 +24,7 @@ export default function ExpenseSettlementManager({
   balances,
   currency,
   currentUserId,
+  initialSettlement,
   onCreated,
 }: {
   expenseId: string
@@ -30,17 +32,35 @@ export default function ExpenseSettlementManager({
   balances: ExpenseBalance[]
   currency: string
   currentUserId: string
+  initialSettlement?: ExpenseSettlementRecord
   onCreated: () => void
 }) {
-  const { createSettlement, isSaving, error } = useCreateExpenseSettlement()
+  const { createSettlement, updateSettlement, isSaving, error } = useCreateExpenseSettlement()
   const otherMembers = members.filter((member) => member.id !== currentUserId)
-  const [payerUserId, setPayerUserId] = useState(currentUserId)
-  const [payeeUserId, setPayeeUserId] = useState(otherMembers.length === 1 ? otherMembers[0].id : '')
-  const [amountOverride, setAmountOverride] = useState<string | null>(null)
-  const balanceByUserId = useMemo(
-    () => new Map(balances.map((balance) => [balance.userId, balance.amountNet])),
-    [balances],
+  const [payerUserId, setPayerUserId] = useState(initialSettlement?.payerUserId ?? currentUserId)
+  const [payeeUserId, setPayeeUserId] = useState(initialSettlement?.payeeUserId
+    ?? (otherMembers.length === 1 ? otherMembers[0].id : ''))
+  const [amountOverride, setAmountOverride] = useState<string | null>(
+    initialSettlement ? formatAmountInput(initialSettlement.amount, currency) : null,
   )
+  const balanceByUserId = useMemo(
+    () => {
+      const result = new Map(balances.map((balance) => [balance.userId, balance.amountNet]))
+      if (initialSettlement) {
+        result.set(
+          initialSettlement.payerUserId,
+          (result.get(initialSettlement.payerUserId) ?? 0) - initialSettlement.amount,
+        )
+        result.set(
+          initialSettlement.payeeUserId,
+          (result.get(initialSettlement.payeeUserId) ?? 0) + initialSettlement.amount,
+        )
+      }
+      return result
+    },
+    [balances, initialSettlement],
+  )
+
   const amountAvailable = useMemo(() => {
     const payerBalance = balanceByUserId.get(payerUserId) ?? 0
     const payeeBalance = balanceByUserId.get(payeeUserId) ?? 0
@@ -70,18 +90,26 @@ export default function ExpenseSettlementManager({
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!canSubmit || amountInMinorUnits === null) return
-    const created = await createSettlement({
-      expenseId: Number(expenseId),
-      payerUserId,
-      payeeUserId,
-      amount: amountInMinorUnits,
-    })
-    if (created) onCreated()
+    const saved = initialSettlement
+      ? await updateSettlement(initialSettlement.id, {
+        payerUserId,
+        payeeUserId,
+        amount: amountInMinorUnits,
+      })
+      : await createSettlement({
+        expenseId: Number(expenseId),
+        payerUserId,
+        payeeUserId,
+        amount: amountInMinorUnits,
+      })
+    if (saved) onCreated()
   }
 
   return (
     <form className='flex flex-col gap-4' onSubmit={handleSubmit}>
-      <h3 className='text-base font-semibold'>Settling outstanding amount owed</h3>
+      <h3 className='text-base font-semibold'>
+        {initialSettlement ? 'Edit settlement' : 'Settling outstanding amount owed'}
+      </h3>
 
       <div className='flex flex-col gap-1.5'>
         <Label id='settlement-payer'>From</Label>
@@ -149,7 +177,9 @@ export default function ExpenseSettlementManager({
       {error && <p role='alert' className='text-sm text-destructive'>{error}</p>}
 
       <Button type='submit' className='min-h-11 w-full' disabled={!canSubmit || isSaving}>
-        {isSaving ? 'Saving settlement…' : 'Record settlement'}
+        {isSaving
+          ? (initialSettlement ? 'Saving changes…' : 'Saving settlement…')
+          : (initialSettlement ? 'Save changes' : 'Record settlement')}
       </Button>
     </form>
   )

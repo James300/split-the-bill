@@ -9,18 +9,26 @@ import ExpenseSettlementManager from '@/components/ExpenseSettlementManager/Expe
 import { useExpenseBalances } from '@/hooks/useExpenseBalances/useExpenseBalances'
 import { useExpenseMembers } from '@/hooks/useExpenseMembers/useExpenseMembers'
 import { formatMinorCurrencyAmount } from '@/lib/utils/money'
+import type { ExpenseSettlementRecord } from '@/hooks/useExpenseSettlements/useExpenseSettlements'
 
 export default function ExpenseBalanceAction({
   expenseId,
   onSettled,
+  editingSettlement,
+  onEditComplete,
+  refreshKey,
 }: {
   expenseId: string
   onSettled: () => void
+  editingSettlement?: ExpenseSettlementRecord
+  onEditComplete: () => void
+  refreshKey: number
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isCreatingSettlement, setIsCreatingSettlement] = useState(false)
-  const membersState = useExpenseMembers(expenseId, isOpen)
-  const balancesState = useExpenseBalances(expenseId, isOpen)
+  const isDialogOpen = isOpen || Boolean(editingSettlement)
+  const membersState = useExpenseMembers(expenseId, isDialogOpen)
+  const balancesState = useExpenseBalances(expenseId, isDialogOpen, refreshKey)
   const { members, currency, isLoading: membersLoading, error: membersError, reload: reloadMembers } = membersState
   const { balances, isLoading: balancesLoading, error: balancesError, retry: retryBalances } = balancesState
 
@@ -57,17 +65,22 @@ export default function ExpenseBalanceAction({
         aria-label='View expense balances'
         title='View expense balances'
         aria-haspopup='dialog'
-        aria-expanded={isOpen}
+        aria-expanded={isDialogOpen}
         onClick={() => setIsOpen(true)}
         className='h-11 w-11 p-0'
       >
         <CircleDollarSign aria-hidden='true' size={19} />
       </IconButton>
       <Dialog
-        open={isOpen}
-        onOpenChange={setIsOpen}
-        title='Your balance'
-        description='See the suggested amounts between you and each other member.'
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          setIsOpen(open)
+          if (!open && editingSettlement) onEditComplete()
+        }}
+        title={editingSettlement ? 'Edit settlement' : 'Your balance'}
+        description={editingSettlement
+          ? 'Update the settlement details.'
+          : 'See the suggested amounts between you and each other member.'}
         className='max-h-[90dvh] overflow-y-auto'
       >
         <section aria-label='Your expense balance breakdown' aria-busy={isLoading} className='flex flex-col gap-4'>
@@ -137,7 +150,7 @@ export default function ExpenseBalanceAction({
                 </ul>
               )}
 
-              {currentBalance.amountNet < 0 && (
+              {currentBalance.amountNet < 0 && !editingSettlement && (
                 <Button
                   type='button'
                   className='min-h-11 w-full'
@@ -147,17 +160,23 @@ export default function ExpenseBalanceAction({
                 </Button>
               )}
 
-              {isCreatingSettlement && currentBalance.amountNet < 0 && (
+              {(isCreatingSettlement || editingSettlement) && (currentBalance.amountNet < 0 || editingSettlement) && (
                 <ExpenseSettlementManager
+                  key={editingSettlement?.id ?? 'new-settlement'}
                   expenseId={expenseId}
                   members={members}
                   balances={balances}
                   currency={currency}
                   currentUserId={currentMember.id}
+                  initialSettlement={editingSettlement}
                   onCreated={() => {
                     setIsCreatingSettlement(false)
                     retryBalances()
                     onSettled()
+                    if (editingSettlement) {
+                      setIsOpen(false)
+                      onEditComplete()
+                    }
                   }}
                 />
               )}

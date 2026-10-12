@@ -1,6 +1,5 @@
 import { Settlement, SettlementCreateInput } from '@/lib/schemas/settlement.schema'
 import { ISettlement, ISettlementCreate } from '@/types/settlement.interface'
-import { createNotFoundEntity } from '@/lib/utils/createNotFoundEntity'
 
 export function mapSettlementInput(settlement: ISettlementCreate): SettlementCreateInput {
   return {
@@ -13,10 +12,6 @@ export function mapSettlementInput(settlement: ISettlementCreate): SettlementCre
 }
 
 export function mapSettlementRecord(settlement: Settlement): ISettlement {
-  if (settlement.deleted_at) {
-    return createNotFoundEntity(settlement.id) as ISettlement
-  }
-
   return {
     id: settlement.id,
     expenseId: settlement.expense_id,
@@ -26,5 +21,7 @@ export function mapSettlementRecord(settlement: Settlement): ISettlement {
     date: settlement.date,
     createdAt: settlement.created_at.getTime(),
     updatedAt: settlement.updated_at.getTime(),
+    createdByUserId: settlement.created_by_user_id ?? null,
+    ...(settlement.deleted_at ? { deletedAt: settlement.deleted_at.getTime() } : {}),
   }
 }

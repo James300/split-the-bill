@@ -1,9 +1,7 @@
 import {
-  deletePaymentAllocationFromDatabase,
   getPaymentAllocationFromDatabase,
   getPaymentAllocationsFromDatabaseByExpenseId,
   getPaymentAllocationsFromDatabaseByPaymentId,
-  updatePaymentAllocationInDatabase,
 } from '@/lib/db/payment-allocation.repo'
 import {
   deletePaymentFromDatabase,
@@ -14,7 +12,7 @@ import {
 } from '@/lib/db/payment.repo'
 import { createExpensePaymentInDatabase } from '@/lib/db/expense-payment.repo'
 import { requireExpenseMember } from '@/lib/access/expense-member'
-import { NotFoundError } from '@/lib/errors/domain'
+import { BadRequestError, NotFoundError } from '@/lib/errors/domain'
 import {
   Payment,
   PaymentUpdateInput,
@@ -25,7 +23,6 @@ import {
 import {
   PaymentAllocation,
   PaymentAllocationUpdateInput,
-  PaymentAllocationUpdateSchema,
 } from '@/lib/schemas/payment-allocation.schema'
 import { ValidationError } from '@/lib/utils/validation/validation-error'
 
@@ -95,7 +92,10 @@ export async function updatePayment(
     return null
   }
   await requireExpenseMember(userId, existing.expense_id)
-  return updatePaymentInDatabase(paymentId, validationResult.data)
+  if (existing.created_by_user_id !== userId) {
+    throw new NotFoundError()
+  }
+  return updatePaymentInDatabase(paymentId, userId, validationResult.data)
 }
 
 export async function deletePayment(
@@ -107,7 +107,10 @@ export async function deletePayment(
     return false
   }
   await requireExpenseMember(userId, existing.expense_id)
-  return deletePaymentFromDatabase(paymentId)
+  if (existing.created_by_user_id !== userId) {
+    throw new NotFoundError()
+  }
+  return deletePaymentFromDatabase(paymentId, userId)
 }
 
 export async function listAllocationsForPayment(
@@ -131,45 +134,27 @@ export async function listAllocationsForExpense(
 }
 
 export async function updatePaymentAllocation(
-  userId: string,
-  paymentId: number,
-  userIdRow: string,
-  patch: PaymentAllocationUpdateInput,
+  _userId: string,
+  _paymentId: number,
+  _userIdRow: string,
+  _patch: PaymentAllocationUpdateInput,
 ): Promise<PaymentAllocation | null> {
-  const validationResult = PaymentAllocationUpdateSchema.safeParse(patch)
-
-  if (!validationResult.success) {
-    const errors = validationResult.error.issues.map((err) => ({
-      field: err.path.join('.'),
-      message: err.message,
-    }))
-
-    throw new ValidationError('Validation failed', errors)
-  }
-
-  const payment = await getPaymentFromDatabaseById(paymentId)
-  if (!payment) {
-    return null
-  }
-  await requireExpenseMember(userId, payment.expense_id)
-  return updatePaymentAllocationInDatabase(
-    paymentId,
-    userIdRow,
-    validationResult.data,
-  )
+  void _userId
+  void _paymentId
+  void _userIdRow
+  void _patch
+  throw new BadRequestError('Edit a payment and all of its shares together through PATCH /api/payments/:id.')
 }
 
 export async function deletePaymentAllocation(
-  userId: string,
-  paymentId: number,
-  userIdRow: string,
+  _userId: string,
+  _paymentId: number,
+  _userIdRow: string,
 ): Promise<boolean> {
-  const payment = await getPaymentFromDatabaseById(paymentId)
-  if (!payment) {
-    return false
-  }
-  await requireExpenseMember(userId, payment.expense_id)
-  return deletePaymentAllocationFromDatabase(paymentId, userIdRow)
+  void _userId
+  void _paymentId
+  void _userIdRow
+  throw new BadRequestError('Delete a payment and its shares together through DELETE /api/payments/:id.')
 }
 
 export async function getPaymentAllocation(

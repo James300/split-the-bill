@@ -11,6 +11,8 @@ export interface ExpenseSettlementRecord {
   date: string
   createdAt: number
   updatedAt: number
+  createdByUserId: string | null
+  deletedAt?: number
 }
 
 async function getErrorMessage(response: Response, fallback: string) {

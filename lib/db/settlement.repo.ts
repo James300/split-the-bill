@@ -83,6 +83,7 @@ async function assertSettlementAllowed(
 }
 
 export async function createSettlementInDatabase(
+  actorUserId: string,
   input: SettlementCreateInput,
 ): Promise<Settlement> {
   const client = await pool.connect()
@@ -95,6 +96,11 @@ export async function createSettlementInDatabase(
     if (expense.rowCount === 0) {
       throw new NotFoundError()
     }
+    const actorMembership = await client.query(
+      `SELECT 1 FROM user_expense WHERE expense_id = $1 AND user_id::text = $2`,
+      [input.expense_id, actorUserId],
+    )
+    if (actorMembership.rowCount === 0) throw new NotFoundError()
 
     await assertSettlementAllowed(
       client,
@@ -105,15 +111,16 @@ export async function createSettlementInDatabase(
     )
 
     const result = await client.query<Settlement>(
-      `INSERT INTO settlement (expense_id, payer_user_id, payee_user_id, amount, date)
-       VALUES ($1, $2, $3, $4, COALESCE($5, NOW()::date))
-       RETURNING id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at`,
+      `INSERT INTO settlement (expense_id, payer_user_id, payee_user_id, amount, date, created_by_user_id)
+       VALUES ($1, $2, $3, $4, COALESCE($5, NOW()::date), $6)
+       RETURNING id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id`,
       [
         input.expense_id,
         input.payer_user_id,
         input.payee_user_id,
         input.amount,
         input.date ?? null,
+        actorUserId,
       ],
     )
     await client.query('COMMIT')
@@ -131,7 +138,7 @@ export async function getSettlementFromDatabaseById(
 ): Promise<Settlement | null> {
   const result = await pool.query<Settlement>(
     `
-    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at
+    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id
     FROM settlement
     WHERE id = $1 AND deleted_at IS NULL;
     `,
@@ -145,9 +152,9 @@ export async function getSettlementsFromDatabaseByExpenseId(
 ): Promise<Settlement[]> {
   const result = await pool.query<Settlement>(
     `
-    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at
+    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id
     FROM settlement
-    WHERE expense_id = $1 AND deleted_at IS NULL
+    WHERE expense_id = $1
     ORDER BY date DESC, id;
     `,
     [expenseId],
@@ -162,7 +169,7 @@ export async function getSettlementsFromDatabaseByExpenseIdSince(
   const sinceDate = new Date(since)
   const result = await pool.query<Settlement>(
     `
-    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at
+    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id
     FROM settlement
     WHERE expense_id = $1 AND updated_at > $2
     ORDER BY updated_at DESC;
@@ -174,6 +181,7 @@ export async function getSettlementsFromDatabaseByExpenseIdSince(
 
 export async function updateSettlementInDatabase(
   id: number,
+  actorUserId: string,
   patch: SettlementUpdateInput,
 ): Promise<Settlement | null> {
   const client = await pool.connect()
@@ -197,16 +205,20 @@ export async function updateSettlementInDatabase(
       throw new NotFoundError()
     }
     const existingResult = await client.query<Settlement>(
-      `SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at
-       FROM settlement
-       WHERE id = $1 AND deleted_at IS NULL
+      `SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id
+       FROM settlement s
+       WHERE s.id = $1 AND s.deleted_at IS NULL
+         AND s.created_by_user_id = $2
+         AND EXISTS (
+           SELECT 1 FROM user_expense ue
+           WHERE ue.expense_id = s.expense_id AND ue.user_id::text = $2
+         )
        FOR UPDATE`,
-      [id],
+      [id, actorUserId],
     )
     const existing = existingResult.rows[0]
     if (!existing) {
-      await client.query('COMMIT')
-      return null
+      throw new NotFoundError()
     }
 
     const payerUserId = patch.payer_user_id ?? existing.payer_user_id
@@ -246,6 +258,11 @@ export async function updateSettlementInDatabase(
       return existing
     }
 
+    await client.query(
+      `INSERT INTO ledger_item_history (item_type, item_id, action, changed_by_user_id, previous_state)
+       VALUES ('settlement', $1, 'updated', $2, $3::jsonb)`,
+      [id, actorUserId, JSON.stringify(existing)],
+    )
     fields.push('updated_at = NOW()')
     values.push(id)
 
@@ -254,7 +271,7 @@ export async function updateSettlementInDatabase(
       UPDATE settlement
       SET ${fields.join(', ')}
       WHERE id = $${i}
-      RETURNING id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at;
+      RETURNING id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id;
       `,
       values,
     )
@@ -269,10 +286,55 @@ export async function updateSettlementInDatabase(
   }
 }
 
-export async function deleteSettlementFromDatabase(id: number): Promise<boolean> {
-  const result = await pool.query(
-    `UPDATE settlement SET deleted_at = NOW() WHERE id = $1`,
-    [id],
-  )
-  return (result.rowCount ?? 0) > 0
+export async function deleteSettlementFromDatabase(id: number, actorUserId: string): Promise<boolean> {
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    const existingExpense = await client.query<{ expense_id: number }>(
+      `SELECT expense_id FROM settlement WHERE id = $1 AND deleted_at IS NULL`,
+      [id],
+    )
+    if (existingExpense.rowCount === 0) {
+      await client.query('COMMIT')
+      return false
+    }
+
+    const expense = await client.query(
+      `SELECT id FROM expense WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`,
+      [existingExpense.rows[0].expense_id],
+    )
+    if (expense.rowCount === 0) throw new NotFoundError()
+
+    const existing = await client.query<Settlement>(
+      `SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id
+       FROM settlement s
+       WHERE s.id = $1 AND s.deleted_at IS NULL
+         AND s.created_by_user_id = $2
+         AND EXISTS (
+           SELECT 1 FROM user_expense ue
+           WHERE ue.expense_id = s.expense_id AND ue.user_id::text = $2
+         )
+       FOR UPDATE`,
+      [id, actorUserId],
+    )
+    const current = existing.rows[0]
+    if (!current) throw new NotFoundError()
+    await client.query(
+      `INSERT INTO ledger_item_history (item_type, item_id, action, changed_by_user_id, previous_state)
+       VALUES ('settlement', $1, 'deleted', $2, $3::jsonb)`,
+      [id, actorUserId, JSON.stringify(current)],
+    )
+    const result = await client.query(
+      `UPDATE settlement SET deleted_at = NOW(), updated_at = NOW()
+       WHERE id = $1 AND deleted_at IS NULL`,
+      [id],
+    )
+    await client.query('COMMIT')
+    return (result.rowCount ?? 0) > 0
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
 }

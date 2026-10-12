@@ -8,9 +8,18 @@ import ExpenseShareAction from '@/components/ExpenseShareAction/ExpenseShareActi
 import Page from '@/components/Page/Page'
 import ExpensePaymentList from '@/components/ExpensePaymentList/ExpensePaymentList'
 import ExpenseContainer from '@/containers/Expense/Expense'
+import type { ExpensePaymentRecord, PaymentAllocationRecord } from '@/hooks/useExpensePayments/useExpensePayments'
+import type { ExpenseSettlementRecord } from '@/hooks/useExpenseSettlements/useExpenseSettlements'
 
 export default function ExpensePageContent({ expenseId }: { expenseId: string }) {
   const [paymentsRefreshKey, setPaymentsRefreshKey] = useState(0)
+  const [editingPayment, setEditingPayment] = useState<{
+    payment: ExpensePaymentRecord
+    allocations: PaymentAllocationRecord[]
+  } | null>(null)
+  const [editingSettlement, setEditingSettlement] = useState<ExpenseSettlementRecord | null>(null)
+
+  const refreshActivity = () => setPaymentsRefreshKey((current) => current + 1)
 
   return (
     <Page
@@ -19,18 +28,30 @@ export default function ExpensePageContent({ expenseId }: { expenseId: string })
         <>
           <ExpensePaymentAction
             expenseId={expenseId}
-            onCreated={() => setPaymentsRefreshKey((current) => current + 1)}
+            onCreated={refreshActivity}
+            editingPayment={editingPayment?.payment}
+            editingAllocations={editingPayment?.allocations}
+            onEditComplete={() => setEditingPayment(null)}
           />
           <ExpenseBalanceAction
             expenseId={expenseId}
-            onSettled={() => setPaymentsRefreshKey((current) => current + 1)}
+            onSettled={refreshActivity}
+            editingSettlement={editingSettlement ?? undefined}
+            onEditComplete={() => setEditingSettlement(null)}
+            refreshKey={paymentsRefreshKey}
           />
           <ExpenseMembersAction expenseId={expenseId} />
           <ExpenseShareAction expenseId={expenseId} />
         </>
       )}
     >
-      <ExpensePaymentList expenseId={expenseId} refreshKey={paymentsRefreshKey} />
+      <ExpensePaymentList
+        expenseId={expenseId}
+        refreshKey={paymentsRefreshKey}
+        onEditPayment={(payment, allocations) => setEditingPayment({ payment, allocations })}
+        onEditSettlement={setEditingSettlement}
+        onActivityChanged={refreshActivity}
+      />
     </Page>
   )
 }

@@ -50,11 +50,11 @@ export async function createExpensePaymentInDatabase(
 
     const paymentResult = await client.query<Payment>(
       `INSERT INTO payments (
-         expense_id, paid_by_user_id, amount, description, created_at, updated_at
+         expense_id, paid_by_user_id, amount, description, created_by_user_id, created_at, updated_at
        )
-       VALUES ($1, $2, $3, $4, NOW(), NOW())
-       RETURNING id, expense_id, paid_by_user_id, amount, description, created_at, updated_at, deleted_at`,
-      [input.expenseId, input.paidByUserId, input.amount, input.description],
+       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+       RETURNING id, expense_id, paid_by_user_id, amount, description, created_at, updated_at, deleted_at, created_by_user_id`,
+      [input.expenseId, input.paidByUserId, input.amount, input.description, actorUserId],
     )
     const payment = paymentResult.rows[0]
 

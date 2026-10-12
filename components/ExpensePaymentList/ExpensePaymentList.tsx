@@ -10,6 +10,9 @@ import type { ExpensePaymentRecord } from '@/hooks/useExpensePayments/useExpense
 import { useExpenseReadState } from '@/hooks/useExpenseReadState/useExpenseReadState'
 import { useExpenseSettlements } from '@/hooks/useExpenseSettlements/useExpenseSettlements'
 import { formatMinorCurrencyAmount } from '@/lib/utils/money'
+import ExpenseLedgerItemActions from '@/components/ExpenseLedgerItemActions/ExpenseLedgerItemActions'
+import type { ExpenseSettlementRecord } from '@/hooks/useExpenseSettlements/useExpenseSettlements'
+import type { PaymentAllocationRecord } from '@/hooks/useExpensePayments/useExpensePayments'
 
 function formatPaymentDate(timestamp: number) {
   return new Intl.DateTimeFormat(undefined, {
@@ -21,9 +24,15 @@ function formatPaymentDate(timestamp: number) {
 export default function ExpensePaymentList({
   expenseId,
   refreshKey,
+  onEditPayment,
+  onEditSettlement,
+  onActivityChanged,
 }: {
   expenseId: string
   refreshKey: number
+  onEditPayment: (payment: ExpensePaymentRecord, allocations: PaymentAllocationRecord[]) => void
+  onEditSettlement: (settlement: ExpenseSettlementRecord) => void
+  onActivityChanged: () => void
 }) {
   const membersState = useExpenseMembers(expenseId, true)
   const paymentsState = useExpensePayments(expenseId, refreshKey)
@@ -178,21 +187,50 @@ export default function ExpensePaymentList({
                 />
               )}
               {activity.kind === 'settlement' ? (
-                <li className='rounded-lg border border-t-border border-r-border border-b-border border-l-4 !border-l-activity-settlement p-4'>
+                <li className={`rounded-lg border border-t-border border-r-border border-b-border p-4 ${activity.record.deletedAt ? 'border-l-4 border-l-muted-foreground' : 'border-l-4 !border-l-activity-settlement'}`}>
                   <article className='flex flex-col gap-3'>
                     <div className='flex items-start justify-between gap-3'>
                       <div className='min-w-0'>
-                        <h3 className='font-medium'>Settlement</h3>
-                        <p className='break-words text-sm text-muted-foreground'>
-                          {membersById.get(activity.record.payerUserId) ?? 'Unknown member'} paid{' '}
-                          {membersById.get(activity.record.payeeUserId) ?? 'Unknown member'}
-                        </p>
+                        <h3 className='font-medium'>{activity.record.deletedAt ? 'Settlement deleted' : 'Settlement'}</h3>
+                        {!activity.record.deletedAt && (
+                          <p className='break-words text-sm text-muted-foreground'>
+                            {membersById.get(activity.record.payerUserId) ?? 'Unknown member'} paid{' '}
+                            {membersById.get(activity.record.payeeUserId) ?? 'Unknown member'}
+                          </p>
+                        )}
                       </div>
-                      <p className='shrink-0 font-semibold'>
-                        {formatMinorCurrencyAmount(activity.record.amount, currency)}
-                      </p>
+                      {!activity.record.deletedAt && (
+                        <p className='shrink-0 font-semibold'>
+                          {formatMinorCurrencyAmount(activity.record.amount, currency)}
+                        </p>
+                      )}
                     </div>
-                    <p className='text-xs text-muted-foreground'>{formatPaymentDate(activity.record.createdAt)}</p>
+                    {activity.record.deletedAt ? (
+                      <>
+                        <p className='text-xs text-muted-foreground'>Deleted {formatPaymentDate(activity.record.deletedAt)}</p>
+                        <details className='rounded-md border border-border px-3 py-2'>
+                          <summary className='min-h-11 cursor-pointer py-3 text-sm font-medium'>View deleted settlement details</summary>
+                          <div className='flex flex-col gap-2 pb-2 text-sm'>
+                            <p>
+                              {membersById.get(activity.record.payerUserId) ?? 'Unknown member'} paid{' '}
+                              {membersById.get(activity.record.payeeUserId) ?? 'Unknown member'}
+                            </p>
+                            <p>{formatMinorCurrencyAmount(activity.record.amount, currency)}</p>
+                            <p className='text-xs text-muted-foreground'>Recorded {formatPaymentDate(activity.record.createdAt)}</p>
+                          </div>
+                        </details>
+                      </>
+                    ) : (
+                      <p className='text-xs text-muted-foreground'>{formatPaymentDate(activity.record.createdAt)}</p>
+                    )}
+                    {!activity.record.deletedAt && activity.record.createdByUserId === currentMember?.id && (
+                      <ExpenseLedgerItemActions
+                        itemType='settlement'
+                        itemId={activity.record.id}
+                        onEdit={() => onEditSettlement(activity.record)}
+                        onDeleted={onActivityChanged}
+                      />
+                    )}
                   </article>
                 </li>
               ) : (
@@ -202,6 +240,10 @@ export default function ExpensePaymentList({
                   membersById={membersById}
                   allocations={allocationsByPayment.get(activity.record.id) ?? []}
                   currency={currency}
+                  isDeleted={Boolean(activity.record.deletedAt)}
+                  canEdit={activity.record.createdByUserId === currentMember?.id}
+                  onEdit={() => onEditPayment(activity.record, allocationsByPayment.get(activity.record.id) ?? [])}
+                  onDeleted={onActivityChanged}
                 />
               )}
             </Fragment>
@@ -229,62 +271,103 @@ function PaymentActivity({
   membersById,
   allocations,
   currency,
+  isDeleted,
+  canEdit,
+  onEdit,
+  onDeleted,
 }: {
   payment: ExpensePaymentRecord
   currentUserId?: string
   membersById: Map<string, string>
   allocations: { payment_id: number; user_id: string; amount: number }[]
   currency: string
+  isDeleted: boolean
+  canEdit: boolean
+  onEdit: () => void
+  onDeleted: () => void
 }) {
   const currentUserShare = allocations
     .filter((allocation) => allocation.user_id === currentUserId)
     .reduce((total, allocation) => total + allocation.amount, 0)
   const currentUserNet = (payment.paidByUserId === currentUserId ? payment.amount : 0) - currentUserShare
-  const borderClass = currentUserNet > 0
+  const borderClass = isDeleted
+    ? 'border-l-4 border-l-muted-foreground'
+    : currentUserNet > 0
     ? '!border-l-activity-credit'
     : currentUserNet < 0
       ? '!border-l-activity-debt'
       : ''
+
+  const details = (
+    <div className='border-t border-border pt-3'>
+      <h4 className='mb-2 text-sm font-medium'>Shares</h4>
+      {allocations.length > 0 ? (
+        <ul className='flex flex-col gap-1.5'>
+          {allocations.map((allocation) => (
+            <li
+              key={`${allocation.payment_id}-${allocation.user_id}`}
+              className='flex items-start justify-between gap-3 text-sm'
+            >
+              <span className='min-w-0 break-words'>
+                {membersById.get(allocation.user_id) ?? 'Unknown member'}
+              </span>
+              <span className='shrink-0'>
+                {formatMinorCurrencyAmount(allocation.amount, currency)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className='text-sm text-muted-foreground'>No participant shares are available.</p>
+      )}
+    </div>
+  )
 
   return (
     <li className={`rounded-lg border border-t-border border-r-border border-b-border p-4 ${borderClass ? `border-l-4 ${borderClass}` : ''}`}>
       <article className='flex flex-col gap-3'>
         <div className='flex items-start justify-between gap-3'>
           <div className='min-w-0'>
-            <h3 className='break-words font-medium'>{payment.description || 'Expense item'}</h3>
-            <p className='text-sm text-muted-foreground'>
-              Paid by {membersById.get(payment.paidByUserId) ?? 'Unknown member'}
-            </p>
+            <h3 className='break-words font-medium'>{isDeleted ? 'Payment deleted' : payment.description || 'Expense item'}</h3>
+            {!isDeleted && (
+              <p className='text-sm text-muted-foreground'>
+                Paid by {membersById.get(payment.paidByUserId) ?? 'Unknown member'}
+              </p>
+            )}
           </div>
-          <p className='shrink-0 font-semibold'>
-            {formatMinorCurrencyAmount(payment.amount, currency)}
-          </p>
+          {!isDeleted && <p className='shrink-0 font-semibold'>{formatMinorCurrencyAmount(payment.amount, currency)}</p>}
         </div>
 
-        <p className='text-xs text-muted-foreground'>{formatPaymentDate(payment.createdAt)}</p>
-
-        <div className='border-t border-border pt-3'>
-          <h4 className='mb-2 text-sm font-medium'>Shares</h4>
-          {allocations.length > 0 ? (
-            <ul className='flex flex-col gap-1.5'>
-              {allocations.map((allocation) => (
-                <li
-                  key={`${allocation.payment_id}-${allocation.user_id}`}
-                  className='flex items-start justify-between gap-3 text-sm'
-                >
-                  <span className='min-w-0 break-words'>
-                    {membersById.get(allocation.user_id) ?? 'Unknown member'}
-                  </span>
-                  <span className='shrink-0'>
-                    {formatMinorCurrencyAmount(allocation.amount, currency)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className='text-sm text-muted-foreground'>No participant shares are available.</p>
-          )}
-        </div>
+        {isDeleted ? (
+          <>
+            <p className='text-xs text-muted-foreground'>
+              Deleted {payment.deletedAt ? formatPaymentDate(payment.deletedAt) : ''}
+            </p>
+            <details className='rounded-md border border-border px-3 py-2'>
+              <summary className='min-h-11 cursor-pointer py-3 text-sm font-medium'>View deleted payment details</summary>
+              <div className='flex flex-col gap-3 pb-2'>
+                <p className='break-words text-sm'>{payment.description || 'Expense item'}</p>
+                <p className='text-sm'>Paid by {membersById.get(payment.paidByUserId) ?? 'Unknown member'}</p>
+                <p className='font-semibold'>{formatMinorCurrencyAmount(payment.amount, currency)}</p>
+                <p className='text-xs text-muted-foreground'>Recorded {formatPaymentDate(payment.createdAt)}</p>
+                {details}
+              </div>
+            </details>
+          </>
+        ) : (
+          <>
+            <p className='text-xs text-muted-foreground'>{formatPaymentDate(payment.createdAt)}</p>
+            {details}
+            {canEdit && (
+              <ExpenseLedgerItemActions
+                itemType='payment'
+                itemId={payment.id}
+                onEdit={onEdit}
+                onDeleted={onDeleted}
+              />
+            )}
+          </>
+        )}
       </article>
     </li>
   )

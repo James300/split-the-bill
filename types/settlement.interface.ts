@@ -6,6 +6,8 @@ export interface ISettlement extends IEntity {
   payeeUserId: string
   amount: number
   date: Date
+  createdByUserId: string | null
+  deletedAt?: number
 }
 
 export interface ISettlementCreate extends Omit<ISettlement, 'id' | 'createdAt' | 'updatedAt'> {}
