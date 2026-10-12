@@ -46,6 +46,7 @@ Keep foreground and background color pairs accessible in both light and dark the
 - Editing or deleting a payment must update the expense balance and keep the user aware of the resulting change. A payment is an expense item; a settlement is a repayment between members.
 - Track a last-read timestamp per expense member. Existing memberships start as read through the migration time; new members start as read through the time they join. In the newest-first payment ledger, show a boundary between unread and already-read payments (or after all unread payments when none have been read yet). Advance read state only when that boundary is visible, and only through the newest payment currently loaded so later payments remain unread.
 - Track the same last-read cursor across payments, settlements, and future activity types in the combined expense feed. Persist when the boundary is seen, but keep its displayed position and label stable for the current page visit; show the updated already-read boundary after the member leaves and returns to the expense.
+- When unread payments or settlements exist, show a pink-toned unread activity line at the top of the expense activity list while preserving the in-feed read boundary behavior.
 
 ### Balances and settlements
 

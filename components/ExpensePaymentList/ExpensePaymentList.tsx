@@ -113,6 +113,17 @@ export default function ExpensePaymentList({
 
   return (
     <section aria-labelledby='expense-payments-heading' className='flex flex-col gap-3'>
+      {unreadCount > 0 && !readState.isLoading && (
+        <div
+          role='status'
+          aria-label={`${unreadCount} unread ${unreadCount === 1 ? 'activity' : 'activities'}`}
+          className='flex items-center gap-3 py-1 text-xs font-semibold text-primary'
+        >
+          <span aria-hidden='true' className='h-px flex-1 bg-primary/60' />
+          <span>Unread activity</span>
+          <span aria-hidden='true' className='h-px flex-1 bg-primary/60' />
+        </div>
+      )}
       <h2 id='expense-payments-heading' className='text-lg font-semibold'>Payments and settlements</h2>
 
       {(error || settlementsError) && (

@@ -83,7 +83,7 @@ Done when a member can record a taxi, meal, hotel, or other item; the payment an
 
 ## 6. View payments on an expense — Implemented (runtime unverified)
 
-The expense page now shows payments and settlements in one newest-first, mobile-readable ledger. Payment cards display the description, total in the expense currency, payer, recorded date, participants, and shares. Settlement entries show the sender, recipient, amount, and date with the themed green border; payments show themed blue/red borders according to the current user's credit/debt from that item. A per-member read-state API and hook persist an activity cursor when the unread boundary is visible, including when the newest activity is a settlement. The boundary stays in its original position during the page visit and shows its refreshed already-read position after leaving and returning. The ledger includes loading, empty, retry, and error states. Existing memberships are initialized by migration 0004, and newly added members receive a baseline when they join.
+The expense page now shows payments and settlements in one newest-first, mobile-readable ledger. Payment cards display the description, total in the expense currency, payer, recorded date, participants, and shares. Settlement entries show the sender, recipient, amount, and date with the themed green border; payments show themed blue/red borders according to the current user's credit/debt from that item. A pink-toned unread activity line appears at the top of the ledger when payments or settlements are unread. A per-member read-state API and hook persist an activity cursor when the unread boundary is visible, including when the newest activity is a settlement. The boundary stays in its original position during the page visit and shows its refreshed already-read position after leaving and returning. The ledger includes loading, empty, retry, and error states. Existing memberships are initialized by migration 0004, and newly added members receive a baseline when they join.
 
 Plan:
 
@@ -93,6 +93,7 @@ Plan:
 - [x] Refresh the payment list after a payment is created and whenever the expense page loads.
 - [x] Add per-expense, per-member last-read storage, membership-scoped read-state endpoints, and atomic initialization for existing and new members.
 - [x] Add a reusable viewport visibility trigger and read boundary in the newest-first activity ledger; persist read progress through the newest currently loaded activity only when the boundary is seen, and keep the line stable until page re-entry.
+- [x] Show a pink-toned unread activity line at the top of the ledger whenever loaded read state indicates unread payments or settlements.
 - [x] Apply migration `lib/db/migrations/0004_add_expense_user_read_state.sql`; it also adds the unique membership pair index required by this database's legacy `user_expense` schema.
 - [ ] Verify unread/read boundary behavior with multiple members against a live database.
 - [ ] Verify payment and allocation changes refresh the list and balances when editing/deletion and balance flows are implemented.
