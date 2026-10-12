@@ -7,6 +7,24 @@ import {
   SettlementUpdateInput,
 } from '@/lib/schemas/settlement.schema'
 
+type SettlementQueryClient = Pick<PoolClient, 'query'>
+
+async function hasSettlementCreatorColumn(client: SettlementQueryClient): Promise<boolean> {
+  const result = await client.query<{ exists: boolean }>(
+    `SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = current_schema()
+        AND table_name = 'settlement'
+        AND column_name = 'created_by_user_id'
+    ) AS exists`,
+  )
+  return Boolean(result.rows[0]?.exists)
+}
+
+function settlementCreatorColumn(hasCreatorColumn: boolean) {
+  return hasCreatorColumn ? 'created_by_user_id' : 'NULL::text AS created_by_user_id'
+}
+
 async function assertSettlementAllowed(
   client: PoolClient,
   expenseId: number,
@@ -89,6 +107,9 @@ export async function createSettlementInDatabase(
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
+    if (!(await hasSettlementCreatorColumn(client))) {
+      throw new BadRequestError('Apply database migration 0005_ledger_item_history before adding settlements.')
+    }
     const expense = await client.query(
       `SELECT id FROM expense WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`,
       [input.expense_id],
@@ -136,9 +157,10 @@ export async function createSettlementInDatabase(
 export async function getSettlementFromDatabaseById(
   id: number,
 ): Promise<Settlement | null> {
+  const creatorColumn = settlementCreatorColumn(await hasSettlementCreatorColumn(pool))
   const result = await pool.query<Settlement>(
     `
-    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id
+    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, ${creatorColumn}
     FROM settlement
     WHERE id = $1 AND deleted_at IS NULL;
     `,
@@ -150,9 +172,10 @@ export async function getSettlementFromDatabaseById(
 export async function getSettlementsFromDatabaseByExpenseId(
   expenseId: number,
 ): Promise<Settlement[]> {
+  const creatorColumn = settlementCreatorColumn(await hasSettlementCreatorColumn(pool))
   const result = await pool.query<Settlement>(
     `
-    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id
+    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, ${creatorColumn}
     FROM settlement
     WHERE expense_id = $1
     ORDER BY date DESC, id;
@@ -167,9 +190,10 @@ export async function getSettlementsFromDatabaseByExpenseIdSince(
   since: number,
 ): Promise<Settlement[]> {
   const sinceDate = new Date(since)
+  const creatorColumn = settlementCreatorColumn(await hasSettlementCreatorColumn(pool))
   const result = await pool.query<Settlement>(
     `
-    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id
+    SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, ${creatorColumn}
     FROM settlement
     WHERE expense_id = $1 AND updated_at > $2
     ORDER BY updated_at DESC;
@@ -187,6 +211,9 @@ export async function updateSettlementInDatabase(
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
+    if (!(await hasSettlementCreatorColumn(client))) {
+      throw new BadRequestError('Apply database migration 0005_ledger_item_history before editing settlements.')
+    }
     const existingExpense = await client.query<{ expense_id: number }>(
       `SELECT expense_id FROM settlement WHERE id = $1 AND deleted_at IS NULL`,
       [id],
@@ -290,6 +317,9 @@ export async function deleteSettlementFromDatabase(id: number, actorUserId: stri
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
+    if (!(await hasSettlementCreatorColumn(client))) {
+      throw new BadRequestError('Apply database migration 0005_ledger_item_history before deleting settlements.')
+    }
     const existingExpense = await client.query<{ expense_id: number }>(
       `SELECT expense_id FROM settlement WHERE id = $1 AND deleted_at IS NULL`,
       [id],

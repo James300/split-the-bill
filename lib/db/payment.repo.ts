@@ -20,15 +20,35 @@ export async function hasPaymentDescriptionColumn(client: PaymentQueryClient): P
   return Boolean(result.rows[0]?.exists)
 }
 
+export async function hasPaymentCreatorColumn(client: PaymentQueryClient): Promise<boolean> {
+  const result = await client.query<{ exists: boolean }>(
+    `SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = current_schema()
+        AND table_name = 'payments'
+        AND column_name = 'created_by_user_id'
+    ) AS exists`,
+  )
+  return Boolean(result.rows[0]?.exists)
+}
+
+function paymentCreatorColumn(hasCreatorColumn: boolean) {
+  return hasCreatorColumn ? 'created_by_user_id' : 'NULL::text AS created_by_user_id'
+}
+
 export async function getPaymentFromDatabaseById(
   id: number,
 ): Promise<Payment | null> {
-  const descriptionColumn = await hasPaymentDescriptionColumn(pool)
+  const [hasDescription, hasCreator] = await Promise.all([
+    hasPaymentDescriptionColumn(pool),
+    hasPaymentCreatorColumn(pool),
+  ])
+  const descriptionColumn = hasDescription
     ? 'description'
     : 'NULL::text AS description'
   const result = await pool.query<Payment>(
     `
-    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, created_at, updated_at, deleted_at, created_by_user_id
+    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, created_at, updated_at, deleted_at, ${paymentCreatorColumn(hasCreator)}
     FROM payments
     WHERE id = $1 AND deleted_at IS NULL;
     `,
@@ -40,12 +60,16 @@ export async function getPaymentFromDatabaseById(
 export async function getPaymentsFromDatabaseByExpenseId(
   expenseId: number,
 ): Promise<Payment[]> {
-  const descriptionColumn = await hasPaymentDescriptionColumn(pool)
+  const [hasDescription, hasCreator] = await Promise.all([
+    hasPaymentDescriptionColumn(pool),
+    hasPaymentCreatorColumn(pool),
+  ])
+  const descriptionColumn = hasDescription
     ? 'description'
     : 'NULL::text AS description'
   const result = await pool.query<Payment>(
     `
-    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, created_at, updated_at, deleted_at, created_by_user_id
+    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, created_at, updated_at, deleted_at, ${paymentCreatorColumn(hasCreator)}
     FROM payments
     WHERE expense_id = $1
     ORDER BY id;
@@ -60,12 +84,16 @@ export async function getPaymentsFromDatabaseByExpenseIdSince(
   since: number,
 ): Promise<Payment[]> {
   const sinceDate = new Date(since)
-  const descriptionColumn = await hasPaymentDescriptionColumn(pool)
+  const [hasDescription, hasCreator] = await Promise.all([
+    hasPaymentDescriptionColumn(pool),
+    hasPaymentCreatorColumn(pool),
+  ])
+  const descriptionColumn = hasDescription
     ? 'description'
     : 'NULL::text AS description'
   const result = await pool.query<Payment>(
     `
-    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, created_at, updated_at, deleted_at, created_by_user_id
+    SELECT id, expense_id, paid_by_user_id, amount, ${descriptionColumn}, created_at, updated_at, deleted_at, ${paymentCreatorColumn(hasCreator)}
     FROM payments
     WHERE expense_id = $1 AND updated_at > $2
     ORDER BY updated_at DESC;
@@ -83,6 +111,9 @@ export async function updatePaymentInDatabase(
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
+    if (!(await hasPaymentCreatorColumn(client))) {
+      throw new BadRequestError('Apply database migration 0005_ledger_item_history before editing payments.')
+    }
     const existing = await client.query<Payment>(
       `SELECT id, expense_id, paid_by_user_id, amount, description, created_at, updated_at, deleted_at, created_by_user_id
        FROM payments WHERE id = $1 AND deleted_at IS NULL`,
@@ -180,6 +211,9 @@ export async function deletePaymentFromDatabase(id: number, actorUserId: string)
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
+    if (!(await hasPaymentCreatorColumn(client))) {
+      throw new BadRequestError('Apply database migration 0005_ledger_item_history before deleting payments.')
+    }
     const existing = await client.query<Payment>(
       `SELECT id, expense_id, paid_by_user_id, amount, description, created_at, updated_at, deleted_at, created_by_user_id
        FROM payments WHERE id = $1 AND deleted_at IS NULL`,

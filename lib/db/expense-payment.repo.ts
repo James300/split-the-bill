@@ -3,7 +3,7 @@ import { BadRequestError, NotFoundError } from '@/lib/errors/domain'
 import type { ExpensePaymentCreateInput, Payment } from '@/lib/schemas/payment.schema'
 import type { PaymentAllocation } from '@/lib/schemas/payment-allocation.schema'
 import { sortMemberIds } from '@/lib/utils/money'
-import { hasPaymentDescriptionColumn } from '@/lib/db/payment.repo'
+import { hasPaymentCreatorColumn, hasPaymentDescriptionColumn } from '@/lib/db/payment.repo'
 
 export interface CreatedExpensePayment {
   payment: Payment
@@ -21,6 +21,9 @@ export async function createExpensePaymentInDatabase(
 
     if (!(await hasPaymentDescriptionColumn(client))) {
       throw new BadRequestError('Apply the payment description database migration before adding payments.')
+    }
+    if (!(await hasPaymentCreatorColumn(client))) {
+      throw new BadRequestError('Apply database migration 0005_ledger_item_history before adding payments.')
     }
 
     const expenseAccess = await client.query<{ id: number }>(
