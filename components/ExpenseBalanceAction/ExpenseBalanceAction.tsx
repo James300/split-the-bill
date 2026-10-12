@@ -6,8 +6,10 @@ import Button from '@/components/Button'
 import Dialog from '@/components/Dialog'
 import IconButton from '@/components/IconButton/IconButton'
 import ExpenseSettlementManager from '@/components/ExpenseSettlementManager/ExpenseSettlementManager'
+import PaymentShareBreakdown from '@/components/PaymentShareBreakdown/PaymentShareBreakdown'
 import { useExpenseBalances } from '@/hooks/useExpenseBalances/useExpenseBalances'
 import { useExpenseMembers } from '@/hooks/useExpenseMembers/useExpenseMembers'
+import { useExpensePayments } from '@/hooks/useExpensePayments/useExpensePayments'
 import { formatMinorCurrencyAmount } from '@/lib/utils/money'
 import type { ExpenseSettlementRecord } from '@/hooks/useExpenseSettlements/useExpenseSettlements'
 
@@ -29,8 +31,16 @@ export default function ExpenseBalanceAction({
   const isDialogOpen = isOpen || Boolean(editingSettlement)
   const membersState = useExpenseMembers(expenseId, isDialogOpen)
   const balancesState = useExpenseBalances(expenseId, isDialogOpen, refreshKey)
+  const paymentsState = useExpensePayments(expenseId, refreshKey, isDialogOpen)
   const { members, currency, isLoading: membersLoading, error: membersError, reload: reloadMembers } = membersState
   const { balances, isLoading: balancesLoading, error: balancesError, retry: retryBalances } = balancesState
+  const {
+    payments,
+    allocations,
+    isLoading: paymentsLoading,
+    error: paymentsError,
+    retry: retryPayments,
+  } = paymentsState
 
   const currentMember = members.find((member) => member.isCurrentUser)
   const currentBalance = balances?.find((balance) => balance.userId === currentMember?.id)
@@ -56,7 +66,23 @@ export default function ExpenseBalanceAction({
   }, [balances, currentBalance, currentMember])
 
   const isLoading = membersLoading || balancesLoading
-  const hasError = Boolean(membersError || balancesError)
+  const hasError = Boolean(membersError || balancesError || paymentsError)
+  const activePayments = payments.filter((payment) => !payment.deletedAt)
+  const activePaymentIds = new Set(activePayments.map((payment) => payment.id))
+  const totalSpent = activePayments.reduce((total, payment) => total + payment.amount, 0)
+  const sharesByMember = new Map<string, number>()
+  for (const allocation of allocations) {
+    if (activePaymentIds.has(allocation.payment_id)) {
+      sharesByMember.set(
+        allocation.user_id,
+        (sharesByMember.get(allocation.user_id) ?? 0) + allocation.amount,
+      )
+    }
+  }
+  const membersById = new Map(members.map((member) => [member.id, member.name]))
+  const aggregateShares = [...members]
+    .sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
+    .map((member) => ({ userId: member.id, amount: sharesByMember.get(member.id) ?? 0 }))
 
   return (
     <>
@@ -83,7 +109,7 @@ export default function ExpenseBalanceAction({
           : 'See the suggested amounts between you and each other member.'}
         className='max-h-[90dvh] overflow-y-auto'
       >
-        <section aria-label='Your expense balance breakdown' aria-busy={isLoading} className='flex flex-col gap-4'>
+        <section aria-label='Your expense balance breakdown' aria-busy={isLoading || paymentsLoading} className='flex flex-col gap-4'>
           {isLoading && (balances === null || members.length === 0) && (
             <p role='status' className='text-sm text-muted-foreground'>Loading balances…</p>
           )}
@@ -98,6 +124,7 @@ export default function ExpenseBalanceAction({
               onClick={() => {
                 void reloadMembers()
                 retryBalances()
+                retryPayments()
               }}
             >
               Try again
@@ -126,6 +153,29 @@ export default function ExpenseBalanceAction({
                   </p>
                 </div>
               )}
+
+              <div className='flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-4'>
+                <div className='flex items-center justify-between gap-3'>
+                  <h3 className='text-sm font-medium'>Total spent</h3>
+                  {!paymentsLoading && !paymentsError && (
+                    <p className='shrink-0 text-lg font-semibold'>
+                      {formatMinorCurrencyAmount(totalSpent, currency)}
+                    </p>
+                  )}
+                </div>
+                {paymentsLoading ? (
+                  <p role='status' className='text-sm text-muted-foreground'>Loading spending breakdown…</p>
+                ) : paymentsError ? (
+                  <p role='alert' className='text-sm text-destructive'>{paymentsError}</p>
+                ) : (
+                  <PaymentShareBreakdown
+                    shares={aggregateShares}
+                    membersById={membersById}
+                    currency={currency}
+                    title='Total share by member'
+                  />
+                )}
+              </div>
 
               {otherMembers.length === 0 ? (
                 <p className='text-sm text-muted-foreground'>You are the only member of this expense.</p>

@@ -13,6 +13,7 @@ import { useExpenseReadState } from '@/hooks/useExpenseReadState/useExpenseReadS
 import { useExpenseSettlements } from '@/hooks/useExpenseSettlements/useExpenseSettlements'
 import { formatMinorCurrencyAmount } from '@/lib/utils/money'
 import ExpenseLedgerItemActions from '@/components/ExpenseLedgerItemActions/ExpenseLedgerItemActions'
+import PaymentShareBreakdown from '@/components/PaymentShareBreakdown/PaymentShareBreakdown'
 import type { ExpenseSettlementRecord } from '@/hooks/useExpenseSettlements/useExpenseSettlements'
 import type { PaymentAllocationRecord } from '@/hooks/useExpensePayments/useExpensePayments'
 
@@ -376,28 +377,14 @@ function PaymentActivity({
       : ''
 
   const details = (
-    <div>
-      <h4 className='mb-2 text-sm font-medium'>Shares</h4>
-      {allocations.length > 0 ? (
-        <ul className='flex flex-col gap-1.5'>
-          {allocations.map((allocation) => (
-            <li
-              key={`${allocation.payment_id}-${allocation.user_id}`}
-              className='flex items-start justify-between gap-3 text-sm'
-            >
-              <span className='min-w-0 break-words'>
-                {membersById.get(allocation.user_id) ?? 'Unknown member'}
-              </span>
-              <span className='shrink-0'>
-                {formatMinorCurrencyAmount(allocation.amount, currency)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className='text-sm text-muted-foreground'>No participant shares are available.</p>
-      )}
-    </div>
+    <PaymentShareBreakdown
+      shares={allocations.map((allocation) => ({
+        userId: allocation.user_id,
+        amount: allocation.amount,
+      }))}
+      membersById={membersById}
+      currency={currency}
+    />
   )
 
   return (

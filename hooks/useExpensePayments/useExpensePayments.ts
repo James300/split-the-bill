@@ -30,7 +30,7 @@ async function getErrorMessage(response: Response, fallback: string) {
   }
 }
 
-export function useExpensePayments(expenseId: string, refreshKey: number) {
+export function useExpensePayments(expenseId: string, refreshKey: number, enabled = true) {
   const [payments, setPayments] = useState<ExpensePaymentRecord[]>([])
   const [allocations, setAllocations] = useState<PaymentAllocationRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -38,6 +38,8 @@ export function useExpensePayments(expenseId: string, refreshKey: number) {
   const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
+    if (!enabled) return
+
     let cancelled = false
 
     async function loadPayments() {
@@ -80,7 +82,7 @@ export function useExpensePayments(expenseId: string, refreshKey: number) {
     return () => {
       cancelled = true
     }
-  }, [expenseId, refreshKey, retryKey])
+  }, [enabled, expenseId, refreshKey, retryKey])
 
   const retry = useCallback(() => setRetryKey((current) => current + 1), [])
 

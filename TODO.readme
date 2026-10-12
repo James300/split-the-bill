@@ -108,12 +108,13 @@ Done when every member can review the expense ledger and understand each charge 
 
 ## 7. View who owes whom for an expense — Partial (current user's breakdown implemented; global suggestions remain)
 
-GET /api/expenses/:id/owed computes net balances using payments, allocations, and settlements. The expense page has an accessible money-icon action that shows the current user's suggested amount with each other member, in stable user-ID order, plus the current user's overall net when there are more than two members. It includes loading, error, and retry states. These current-user suggestions do not yet minimize transfers for the whole group, and the feature has not been runtime-verified.
+GET /api/expenses/:id/owed computes net balances using payments, allocations, and settlements. The expense page has an accessible money-icon action that shows the current user's suggested amount with each other member, in stable user-ID order, plus the current user's overall net when there are more than two members. The balance dialog also shows the total active payment spend and per-member allocated share totals, reusing the payment item's share breakdown component and excluding deleted payments. It includes loading, error, and retry states. These current-user suggestions do not yet minimize transfers for the whole group, and the feature has not been runtime-verified.
 
 Plan:
 
 - [x] Display the current user's position and a clear direction for each suggested transfer (for example, “You owe Alex $12.50”).
 - [x] Include every other participant in the current user's breakdown and label members with no suggested transfer involving the current user.
+- [x] Show the expense's total active spending and aggregate allocated share for each member in the balance dialog.
 - [ ] Define deterministic transfer suggestions for groups of three or more while minimizing the number of suggested transfers; never change the underlying ledger to create suggestions.
 - [ ] Verify the formula and rounding across multiple payers, uneven splits, partial repayments, and fully settled expenses.
 - [ ] Keep all values in the expense currency and integer minor units.
