@@ -1,6 +1,7 @@
 'use client'
 
-import { Fragment, useCallback } from 'react'
+import { Fragment } from 'react'
+import { ChevronDown } from 'lucide-react'
 import Button from '@/components/Button'
 import ExpensePaymentReadBoundary from '@/components/ExpensePaymentList/ExpensePaymentReadBoundary'
 import ExpensePaymentListPlaceholder from '@/components/ExpensePaymentList/ExpensePaymentListPlaceholder'
@@ -81,33 +82,84 @@ export default function ExpensePaymentList({
       createdAt: settlement.createdAt,
     })),
   ].sort(compareActivityOrder)
+  const activityBalances = new Map<string, number>()
+  let settledByActivityId: number | null = null
+  const chronologicalActivities = [...activities]
+    .filter((activity) => !activity.record.deletedAt)
+    .sort((left, right) =>
+      left.createdAt - right.createdAt
+      || left.id - right.id
+      || (left.kind === right.kind ? 0 : left.kind === 'payment' ? -1 : 1),
+    )
+
+  for (const activity of chronologicalActivities) {
+    if (activity.kind === 'payment') {
+      const payment = activity.record
+      activityBalances.set(
+        payment.paidByUserId,
+        (activityBalances.get(payment.paidByUserId) ?? 0) + payment.amount,
+      )
+      for (const allocation of allocationsByPayment.get(payment.id) ?? []) {
+        activityBalances.set(
+          allocation.user_id,
+          (activityBalances.get(allocation.user_id) ?? 0) - allocation.amount,
+        )
+      }
+    } else {
+      const settlement = activity.record
+      activityBalances.set(
+        settlement.payerUserId,
+        (activityBalances.get(settlement.payerUserId) ?? 0) + settlement.amount,
+      )
+      activityBalances.set(
+        settlement.payeeUserId,
+        (activityBalances.get(settlement.payeeUserId) ?? 0) - settlement.amount,
+      )
+      if ([...activityBalances.values()].every((balance) => balance === 0)) {
+        settledByActivityId = settlement.id
+      }
+    }
+  }
+  const isFullySettled = settledByActivityId !== null
+    && [...activityBalances.values()].every((balance) => balance === 0)
+  const settledActivityIndex = isFullySettled
+    ? activities.findIndex((activity) =>
+      activity.kind === 'settlement' && activity.id === settledByActivityId,
+    )
+    : -1
+  const visibleActivities = settledActivityIndex >= 0
+    ? activities.slice(0, settledActivityIndex + 1)
+    : activities
 
   const lastReadAt = readState.lastReadAt
   const lastReadActivity = readState.lastReadActivity
   let readBoundaryIndex: number | null = null
-  if (activities.length > 0 && lastReadAt !== null && !readState.isLoading) {
+  if (visibleActivities.length > 0 && lastReadAt !== null && !readState.isLoading) {
     if (lastReadActivity) {
-      const lastReadIndex = activities.findIndex((activity) =>
+      const lastReadIndex = visibleActivities.findIndex((activity) =>
         activity.kind === lastReadActivity.activityType
         && activity.record.id === lastReadActivity.activityId,
       )
       readBoundaryIndex = lastReadIndex >= 0
         ? lastReadIndex
-        : activities.findIndex((activity) => compareActivityOrder(activity, {
+        : visibleActivities.findIndex((activity) => compareActivityOrder(activity, {
           date: lastReadActivity.activityDate,
           id: lastReadActivity.activityId,
           kind: lastReadActivity.activityType,
         }) > 0)
-      if (readBoundaryIndex < 0) readBoundaryIndex = activities.length
+      if (readBoundaryIndex < 0) readBoundaryIndex = visibleActivities.length
     } else {
-      const firstReadActivityIndex = activities.findIndex((activity) => activity.createdAt <= lastReadAt)
-      readBoundaryIndex = firstReadActivityIndex >= 0 ? firstReadActivityIndex : activities.length
+      const firstReadActivityIndex = visibleActivities.findIndex((activity) => activity.createdAt <= lastReadAt)
+      readBoundaryIndex = firstReadActivityIndex >= 0 ? firstReadActivityIndex : visibleActivities.length
     }
   }
-  const unreadCount = readBoundaryIndex ?? 0
+  const unreadCount = isFullySettled
+    ? Math.max(0, settledActivityIndex + 1 - (readBoundaryIndex ?? 0))
+    : readBoundaryIndex ?? 0
+  if (isFullySettled) readBoundaryIndex = visibleActivities.length
 
   const markRead = readState.markRead
-  const markActivityRead = useCallback(() => {
+  const markActivityRead = () => {
     const newestActivity = activities[0]
     if (newestActivity) {
       void markRead({
@@ -115,7 +167,7 @@ export default function ExpensePaymentList({
         activityId: newestActivity.record.id,
       })
     }
-  }, [activities, markRead])
+  }
   const showPaymentListLoading = payments.length === 0 && settlements.length === 0
     && (isLoading || settlementsLoading || readState.isLoading)
 
@@ -183,19 +235,20 @@ export default function ExpensePaymentList({
           </p>
         )}
 
-      {activities.length > 0 && (
+      {visibleActivities.length > 0 && (
         <ol
           className='flex flex-col gap-3'
           aria-label='Expense payments and settlements, newest first'
           aria-busy={isLoading || settlementsLoading || readState.isLoading}
         >
-          {activities.map((activity, index) => (
+          {visibleActivities.map((activity, index) => (
             <Fragment key={`${activity.kind}-${activity.record.id}`}>
               {index === readBoundaryIndex && (
                 <ExpensePaymentReadBoundary
                   key='read-boundary'
-                  label={unreadCount > 0 ? 'New activity' : 'Already read'}
+                  label={isFullySettled ? 'All paid' : unreadCount > 0 ? 'New activity' : 'Already read'}
                   observesUnreadActivity={unreadCount > 0
+                    && !readState.isLoading
                     && !readState.isMarking
                     && !readState.hasMarkedReadThisVisit
                     && !readState.error}
@@ -204,26 +257,35 @@ export default function ExpensePaymentList({
               )}
               {activity.kind === 'settlement' ? (
                 <li className={`rounded-lg border border-t-border border-r-border border-b-border p-4 ${activity.record.deletedAt ? 'border-l-4 border-l-muted-foreground' : 'border-l-4 !border-l-activity-settlement'}`}>
-                  <article className='flex flex-col gap-3'>
-                    <div className='flex items-start justify-between gap-3'>
-                      <div className='min-w-0'>
-                        <h3 className='font-medium'>{activity.record.deletedAt ? 'Settlement deleted' : 'Settlement'}</h3>
+                  <details className='group'>
+                    <summary className='flex min-h-11 cursor-pointer list-none flex-col gap-2 [&::-webkit-details-marker]:hidden'>
+                      <div className='flex items-start justify-between gap-3'>
+                        <div className='min-w-0'>
+                          <span className='block font-medium'>{activity.record.deletedAt ? 'Settlement deleted' : 'Settlement'}</span>
+                          {!activity.record.deletedAt && (
+                            <p className='break-words text-sm text-muted-foreground'>
+                              {membersById.get(activity.record.payerUserId) ?? 'Unknown member'} paid{' '}
+                              {membersById.get(activity.record.payeeUserId) ?? 'Unknown member'}
+                            </p>
+                          )}
+                        </div>
                         {!activity.record.deletedAt && (
-                          <p className='break-words text-sm text-muted-foreground'>
-                            {membersById.get(activity.record.payerUserId) ?? 'Unknown member'} paid{' '}
-                            {membersById.get(activity.record.payeeUserId) ?? 'Unknown member'}
+                          <p className='shrink-0 font-semibold'>
+                            {formatMinorCurrencyAmount(activity.record.amount, currency)}
                           </p>
                         )}
                       </div>
-                      {!activity.record.deletedAt && (
-                        <p className='shrink-0 font-semibold'>
-                          {formatMinorCurrencyAmount(activity.record.amount, currency)}
+                      <div className='flex items-center justify-between gap-3'>
+                        <p className='text-xs text-muted-foreground'>
+                          {activity.record.deletedAt
+                            ? `Deleted ${formatPaymentDate(activity.record.deletedAt)}`
+                            : formatPaymentDate(activity.record.date)}
                         </p>
-                      )}
-                    </div>
-                    {activity.record.deletedAt ? (
-                      <>
-                        <p className='text-xs text-muted-foreground'>Deleted {formatPaymentDate(activity.record.deletedAt)}</p>
+                        <ChevronDown aria-hidden='true' size={16} className='shrink-0 text-muted-foreground transition-transform group-open:rotate-180' />
+                      </div>
+                    </summary>
+                    <div className='mt-3 flex flex-col gap-3 border-t border-border pt-3'>
+                      {activity.record.deletedAt ? (
                         <details className='rounded-md border border-border px-3 py-2'>
                           <summary className='min-h-11 cursor-pointer py-3 text-sm font-medium'>View deleted settlement details</summary>
                           <div className='flex flex-col gap-2 pb-2 text-sm'>
@@ -235,19 +297,16 @@ export default function ExpensePaymentList({
                             <p className='text-xs text-muted-foreground'>Recorded {formatPaymentDate(activity.record.date)}</p>
                           </div>
                         </details>
-                      </>
-                    ) : (
-                      <p className='text-xs text-muted-foreground'>{formatPaymentDate(activity.record.date)}</p>
-                    )}
-                    {!activity.record.deletedAt && activity.record.createdByUserId === currentMember?.id && (
-                      <ExpenseLedgerItemActions
-                        itemType='settlement'
-                        itemId={activity.record.id}
-                        onEdit={() => onEditSettlement(activity.record)}
-                        onDeleted={onActivityChanged}
-                      />
-                    )}
-                  </article>
+                      ) : activity.record.createdByUserId === currentMember?.id ? (
+                        <ExpenseLedgerItemActions
+                          itemType='settlement'
+                          itemId={activity.record.id}
+                          onEdit={() => onEditSettlement(activity.record)}
+                          onDeleted={onActivityChanged}
+                        />
+                      ) : null}
+                    </div>
+                  </details>
                 </li>
               ) : (
                 <PaymentActivity
@@ -264,11 +323,12 @@ export default function ExpensePaymentList({
               )}
             </Fragment>
           ))}
-          {readBoundaryIndex === activities.length && (
+          {readBoundaryIndex === visibleActivities.length && (
             <ExpensePaymentReadBoundary
               key='read-boundary'
-              label={unreadCount > 0 ? 'New activity' : 'Already read'}
+              label={isFullySettled ? 'All paid' : unreadCount > 0 ? 'New activity' : 'Already read'}
               observesUnreadActivity={unreadCount > 0
+                && !readState.isLoading
                 && !readState.isMarking
                 && !readState.hasMarkedReadThisVisit
                 && !readState.error}
@@ -315,7 +375,7 @@ function PaymentActivity({
       : ''
 
   const details = (
-    <div className='border-t border-border pt-3'>
+    <div>
       <h4 className='mb-2 text-sm font-medium'>Shares</h4>
       {allocations.length > 0 ? (
         <ul className='flex flex-col gap-1.5'>
@@ -341,24 +401,30 @@ function PaymentActivity({
 
   return (
     <li className={`rounded-lg border border-t-border border-r-border border-b-border p-4 ${borderClass ? `border-l-4 ${borderClass}` : ''}`}>
-      <article className='flex flex-col gap-3'>
-        <div className='flex items-start justify-between gap-3'>
-          <div className='min-w-0'>
-            <h3 className='break-words font-medium'>{isDeleted ? 'Payment deleted' : payment.description || 'Expense item'}</h3>
-            {!isDeleted && (
-              <p className='text-sm text-muted-foreground'>
-                Paid by {membersById.get(payment.paidByUserId) ?? 'Unknown member'}
-              </p>
-            )}
+      <details className='group'>
+        <summary className='flex min-h-11 cursor-pointer list-none flex-col gap-2 [&::-webkit-details-marker]:hidden'>
+          <div className='flex items-start justify-between gap-3'>
+            <div className='min-w-0'>
+              <span className='block break-words font-medium'>{isDeleted ? 'Payment deleted' : payment.description || 'Expense item'}</span>
+              {!isDeleted && (
+                <p className='text-sm text-muted-foreground'>
+                  Paid by {membersById.get(payment.paidByUserId) ?? 'Unknown member'}
+                </p>
+              )}
+            </div>
+            {!isDeleted && <p className='shrink-0 font-semibold'>{formatMinorCurrencyAmount(payment.amount, currency)}</p>}
           </div>
-          {!isDeleted && <p className='shrink-0 font-semibold'>{formatMinorCurrencyAmount(payment.amount, currency)}</p>}
-        </div>
-
-        {isDeleted ? (
-          <>
+          <div className='flex items-center justify-between gap-3'>
             <p className='text-xs text-muted-foreground'>
-              Deleted {payment.deletedAt ? formatPaymentDate(payment.deletedAt) : ''}
+              {isDeleted
+                ? `Deleted ${payment.deletedAt ? formatPaymentDate(payment.deletedAt) : ''}`
+                : formatPaymentDate(payment.date)}
             </p>
+            <ChevronDown aria-hidden='true' size={16} className='shrink-0 text-muted-foreground transition-transform group-open:rotate-180' />
+          </div>
+        </summary>
+        <div className='mt-3 flex flex-col gap-3 border-t border-border pt-3'>
+          {isDeleted ? (
             <details className='rounded-md border border-border px-3 py-2'>
               <summary className='min-h-11 cursor-pointer py-3 text-sm font-medium'>View deleted payment details</summary>
               <div className='flex flex-col gap-3 pb-2'>
@@ -369,22 +435,21 @@ function PaymentActivity({
                 {details}
               </div>
             </details>
-          </>
-        ) : (
-          <>
-            <p className='text-xs text-muted-foreground'>{formatPaymentDate(payment.date)}</p>
-            {details}
-            {canEdit && (
-              <ExpenseLedgerItemActions
-                itemType='payment'
-                itemId={payment.id}
-                onEdit={onEdit}
-                onDeleted={onDeleted}
-              />
-            )}
-          </>
-        )}
-      </article>
+          ) : (
+            <>
+              {details}
+              {canEdit && (
+                <ExpenseLedgerItemActions
+                  itemType='payment'
+                  itemId={payment.id}
+                  onEdit={onEdit}
+                  onDeleted={onDeleted}
+                />
+              )}
+            </>
+          )}
+        </div>
+      </details>
     </li>
   )
 }
