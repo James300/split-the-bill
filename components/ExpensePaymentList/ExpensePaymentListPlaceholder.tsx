@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 export default function ExpensePaymentListPlaceholder() {
   return (
     <section aria-labelledby='expense-payments-heading' className='flex flex-col gap-3'>
-      <h2 id='expense-payments-heading' className='text-lg font-semibold'>Payments</h2>
+      <h2 id='expense-payments-heading' className='text-lg font-semibold'>Payments and settlements</h2>
       <div role='status' aria-label='Loading expense payments' className='flex flex-col gap-3'>
         <span className='sr-only'>Loading expense payments…</span>
         {[0, 1, 2].map((item) => (

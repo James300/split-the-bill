@@ -16,7 +16,7 @@ See [AGENTS.md](AGENTS.md) for the product behavior and implementation conventio
 
 ## Current implementation
 
-The project includes email and Google authentication flows, expense creation and member listing, seven-day share invitations, a payment ledger with per-member unread tracking, payment and payment-allocation APIs, expense balance calculation, and settlement APIs. Invite links can be replaced or revoked from the expense share dialog; recipients can preview an expense and its members, authenticate, and join. Apply pending database migrations with the migration runner before using new schema-backed features. The TODO tracks remaining UI gaps and flows that still need runtime verification.
+The project includes email and Google authentication flows, expense creation and member listing, seven-day share invitations, a payment ledger with per-member unread tracking, a combined payment/settlement activity list, settlement recording from the balance dialog, and expense balance calculation. Invite links can be replaced or revoked from the expense share dialog; recipients can preview an expense and its members, authenticate, and join. Apply pending database migrations with the migration runner before using new schema-backed features. The TODO tracks remaining UI gaps and flows that still need runtime verification.
 
 The database model is summarized in [schema.readme](schema.readme); detailed schema definitions live in [lib/schemas](lib/schemas).
 

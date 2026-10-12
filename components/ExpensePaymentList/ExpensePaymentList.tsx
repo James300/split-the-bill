@@ -6,7 +6,9 @@ import ExpensePaymentReadBoundary from '@/components/ExpensePaymentList/ExpenseP
 import ExpensePaymentListPlaceholder from '@/components/ExpensePaymentList/ExpensePaymentListPlaceholder'
 import { useExpenseMembers } from '@/hooks/useExpenseMembers/useExpenseMembers'
 import { useExpensePayments } from '@/hooks/useExpensePayments/useExpensePayments'
+import type { ExpensePaymentRecord } from '@/hooks/useExpensePayments/useExpensePayments'
 import { useExpenseReadState } from '@/hooks/useExpenseReadState/useExpenseReadState'
+import { useExpenseSettlements } from '@/hooks/useExpenseSettlements/useExpenseSettlements'
 import { formatMinorCurrencyAmount } from '@/lib/utils/money'
 
 function formatPaymentDate(timestamp: number) {
@@ -25,9 +27,17 @@ export default function ExpensePaymentList({
 }) {
   const membersState = useExpenseMembers(expenseId, true)
   const paymentsState = useExpensePayments(expenseId, refreshKey)
+  const settlementsState = useExpenseSettlements(expenseId, refreshKey)
   const readState = useExpenseReadState(expenseId)
   const { members, currency, isLoading: membersLoading, error: membersError, reload: reloadMembers } = membersState
   const { payments, allocations, isLoading, error, retry } = paymentsState
+  const {
+    settlements,
+    isLoading: settlementsLoading,
+    error: settlementsError,
+    retry: retrySettlements,
+  } = settlementsState
+  const currentMember = members.find((member) => member.isCurrentUser)
   const membersById = new Map(members.map((member) => [member.id, member.name]))
   const allocationsByPayment = new Map<number, typeof allocations>()
 
@@ -37,19 +47,53 @@ export default function ExpensePaymentList({
     allocationsByPayment.set(allocation.payment_id, current)
   }
 
+  const activities = [
+    ...payments.map((payment) => ({
+      kind: 'payment' as const,
+      record: payment,
+      createdAt: payment.createdAt,
+    })),
+    ...settlements.map((settlement) => ({
+      kind: 'settlement' as const,
+      record: settlement,
+      createdAt: settlement.createdAt,
+    })),
+  ].sort((left, right) =>
+    right.createdAt - left.createdAt
+    || (left.kind === right.kind
+      ? right.record.id - left.record.id
+      : left.kind === 'settlement' ? -1 : 1),
+  )
+
   const lastReadAt = readState.lastReadAt
   const unreadCount = lastReadAt === null
     ? 0
     : payments.filter((payment) => payment.createdAt > lastReadAt).length
-  const readBoundaryIndex = unreadCount === 0 ? 0 : unreadCount
-  const readBoundaryLabel = unreadCount > 0 && readBoundaryIndex === payments.length
-    ? 'Mark new payments as read'
-    : 'Already read'
+  let readBoundaryIndex: number | null = null
+  if (payments.length > 0 && lastReadAt !== null && !readState.isLoading) {
+    const firstReadPaymentIndex = activities.findIndex((activity) =>
+      activity.kind === 'payment' && activity.record.createdAt <= lastReadAt,
+    )
+    if (unreadCount === 0) {
+      readBoundaryIndex = firstReadPaymentIndex >= 0
+        ? firstReadPaymentIndex
+        : activities.findIndex((activity) => activity.kind === 'payment')
+    } else if (firstReadPaymentIndex >= 0) {
+      readBoundaryIndex = firstReadPaymentIndex
+    } else {
+      readBoundaryIndex = activities.reduce((lastPaymentIndex, activity, index) =>
+        activity.kind === 'payment' ? index : lastPaymentIndex, -1,
+      ) + 1
+    }
+  }
+
   const markRead = readState.markRead
   const markPaymentsRead = useCallback(() => {
     const newestPayment = payments[0]
     if (newestPayment) void markRead(newestPayment.id)
   }, [markRead, payments])
+  const showPaymentListLoading = payments.length === 0 && settlements.length === 0
+    && (isLoading || settlementsLoading || readState.isLoading)
 
   if (members.length === 0 && membersError) {
     return (
@@ -60,9 +104,7 @@ export default function ExpensePaymentList({
     )
   }
 
-  if ((members.length === 0 && (membersLoading || isLoading))
-    || (isLoading && payments.length === 0)
-    || (readState.isLoading && payments.length === 0)) {
+  if ((members.length === 0 && (membersLoading || showPaymentListLoading)) || showPaymentListLoading) {
     return <ExpensePaymentListPlaceholder />
   }
 
@@ -72,12 +114,21 @@ export default function ExpensePaymentList({
 
   return (
     <section aria-labelledby='expense-payments-heading' className='flex flex-col gap-3'>
-      <h2 id='expense-payments-heading' className='text-lg font-semibold'>Payments</h2>
+      <h2 id='expense-payments-heading' className='text-lg font-semibold'>Payments and settlements</h2>
 
-      {error && (
+      {(error || settlementsError) && (
         <div className='flex flex-col gap-3 rounded-lg border border-destructive/40 p-4'>
-          <p role='alert' className='text-sm text-destructive'>{error}</p>
-          <Button type='button' className='min-h-11 self-start' onClick={retry}>Try again</Button>
+          <p role='alert' className='text-sm text-destructive'>{error ?? settlementsError}</p>
+          <Button
+            type='button'
+            className='min-h-11 self-start'
+            onClick={() => {
+              if (error) retry()
+              if (settlementsError) retrySettlements()
+            }}
+          >
+            Try again
+          </Button>
         </div>
       )}
 
@@ -90,78 +141,62 @@ export default function ExpensePaymentList({
         </div>
       )}
 
-      {!isLoading && !error && payments.length === 0 && (
-        <p className='rounded-lg border border-border p-4 text-sm text-muted-foreground'>
-          No payments yet. Add the first expense item using the plus button above.
-        </p>
-      )}
+      {!isLoading && !settlementsLoading && !error && !settlementsError
+        && payments.length === 0 && settlements.length === 0 && (
+          <p className='rounded-lg border border-border p-4 text-sm text-muted-foreground'>
+            No payments or settlements yet. Add the first expense item using the plus button above.
+          </p>
+        )}
 
-      {payments.length > 0 && (
+      {activities.length > 0 && (
         <ol
           className='flex flex-col gap-3'
-          aria-label='Expense payments, newest first'
-          aria-busy={isLoading || readState.isLoading}
+          aria-label='Expense payments and settlements, newest first'
+          aria-busy={isLoading || settlementsLoading || readState.isLoading}
         >
-          {payments.map((payment, index) => {
-            const paymentAllocations = allocationsByPayment.get(payment.id) ?? []
-
-            return (
-              <Fragment key={payment.id}>
-                {index === readBoundaryIndex && (
-                  <ExpensePaymentReadBoundary
-                    key='read-boundary'
-                    label={readBoundaryLabel}
-                    observesUnreadPayments={unreadCount > 0 && !readState.isMarking && !readState.error}
-                    onVisible={markPaymentsRead}
-                  />
-                )}
-                <li className='rounded-lg border border-border p-4'>
+          {activities.map((activity, index) => (
+            <Fragment key={`${activity.kind}-${activity.record.id}`}>
+              {index === readBoundaryIndex && (
+                <ExpensePaymentReadBoundary
+                  key='read-boundary'
+                  label={unreadCount > 0 ? 'New payments' : 'Already read'}
+                  observesUnreadPayments={unreadCount > 0 && !readState.isMarking && !readState.error}
+                  onVisible={markPaymentsRead}
+                />
+              )}
+              {activity.kind === 'settlement' ? (
+                <li className='rounded-lg border border-border border-l-4 border-l-green-700 p-4 dark:border-l-green-400'>
                   <article className='flex flex-col gap-3'>
                     <div className='flex items-start justify-between gap-3'>
                       <div className='min-w-0'>
-                        <h3 className='break-words font-medium'>{payment.description || 'Expense item'}</h3>
-                        <p className='text-sm text-muted-foreground'>
-                          Paid by {membersById.get(payment.paidByUserId) ?? 'Unknown member'}
+                        <h3 className='font-medium'>Settlement</h3>
+                        <p className='break-words text-sm text-muted-foreground'>
+                          {membersById.get(activity.record.payerUserId) ?? 'Unknown member'} paid{' '}
+                          {membersById.get(activity.record.payeeUserId) ?? 'Unknown member'}
                         </p>
                       </div>
                       <p className='shrink-0 font-semibold'>
-                        {formatMinorCurrencyAmount(payment.amount, currency)}
+                        {formatMinorCurrencyAmount(activity.record.amount, currency)}
                       </p>
                     </div>
-
-                    <p className='text-xs text-muted-foreground'>{formatPaymentDate(payment.createdAt)}</p>
-
-                    <div className='border-t border-border pt-3'>
-                      <h4 className='mb-2 text-sm font-medium'>Shares</h4>
-                      {paymentAllocations.length > 0 ? (
-                        <ul className='flex flex-col gap-1.5'>
-                          {paymentAllocations.map((allocation) => (
-                            <li
-                              key={`${allocation.payment_id}-${allocation.user_id}`}
-                              className='flex items-start justify-between gap-3 text-sm'
-                            >
-                              <span className='min-w-0 break-words'>
-                                {membersById.get(allocation.user_id) ?? 'Unknown member'}
-                              </span>
-                              <span className='shrink-0'>
-                                {formatMinorCurrencyAmount(allocation.amount, currency)}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className='text-sm text-muted-foreground'>No participant shares are available.</p>
-                      )}
-                    </div>
+                    <p className='text-xs text-muted-foreground'>{formatPaymentDate(activity.record.createdAt)}</p>
                   </article>
                 </li>
-              </Fragment>
-            )
-          })}
-          {payments.length > 0 && readBoundaryIndex === payments.length && (
+              ) : (
+                <PaymentActivity
+                  payment={activity.record}
+                  currentUserId={currentMember?.id}
+                  membersById={membersById}
+                  allocations={allocationsByPayment.get(activity.record.id) ?? []}
+                  currency={currency}
+                />
+              )}
+            </Fragment>
+          ))}
+          {readBoundaryIndex === activities.length && (
             <ExpensePaymentReadBoundary
               key='read-boundary'
-              label={readBoundaryLabel}
+              label={unreadCount > 0 ? 'New payments' : 'Already read'}
               observesUnreadPayments={unreadCount > 0 && !readState.isMarking && !readState.error}
               onVisible={markPaymentsRead}
             />
@@ -169,5 +204,72 @@ export default function ExpensePaymentList({
         </ol>
       )}
     </section>
+  )
+}
+
+function PaymentActivity({
+  payment,
+  currentUserId,
+  membersById,
+  allocations,
+  currency,
+}: {
+  payment: ExpensePaymentRecord
+  currentUserId?: string
+  membersById: Map<string, string>
+  allocations: { payment_id: number; user_id: string; amount: number }[]
+  currency: string
+}) {
+  const currentUserShare = allocations
+    .filter((allocation) => allocation.user_id === currentUserId)
+    .reduce((total, allocation) => total + allocation.amount, 0)
+  const currentUserNet = (payment.paidByUserId === currentUserId ? payment.amount : 0) - currentUserShare
+  const borderClass = currentUserNet > 0
+    ? 'border-l-blue-700 dark:border-l-blue-400'
+    : currentUserNet < 0
+      ? 'border-l-red-700 dark:border-l-red-400'
+      : ''
+
+  return (
+    <li className={`rounded-lg border border-border p-4 ${borderClass ? `border-l-4 ${borderClass}` : ''}`}>
+      <article className='flex flex-col gap-3'>
+        <div className='flex items-start justify-between gap-3'>
+          <div className='min-w-0'>
+            <h3 className='break-words font-medium'>{payment.description || 'Expense item'}</h3>
+            <p className='text-sm text-muted-foreground'>
+              Paid by {membersById.get(payment.paidByUserId) ?? 'Unknown member'}
+            </p>
+          </div>
+          <p className='shrink-0 font-semibold'>
+            {formatMinorCurrencyAmount(payment.amount, currency)}
+          </p>
+        </div>
+
+        <p className='text-xs text-muted-foreground'>{formatPaymentDate(payment.createdAt)}</p>
+
+        <div className='border-t border-border pt-3'>
+          <h4 className='mb-2 text-sm font-medium'>Shares</h4>
+          {allocations.length > 0 ? (
+            <ul className='flex flex-col gap-1.5'>
+              {allocations.map((allocation) => (
+                <li
+                  key={`${allocation.payment_id}-${allocation.user_id}`}
+                  className='flex items-start justify-between gap-3 text-sm'
+                >
+                  <span className='min-w-0 break-words'>
+                    {membersById.get(allocation.user_id) ?? 'Unknown member'}
+                  </span>
+                  <span className='shrink-0'>
+                    {formatMinorCurrencyAmount(allocation.amount, currency)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className='text-sm text-muted-foreground'>No participant shares are available.</p>
+          )}
+        </div>
+      </article>
+    </li>
   )
 }

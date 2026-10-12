@@ -21,7 +21,10 @@ export default function ExpensePageContent({ expenseId }: { expenseId: string })
             expenseId={expenseId}
             onCreated={() => setPaymentsRefreshKey((current) => current + 1)}
           />
-          <ExpenseBalanceAction expenseId={expenseId} />
+          <ExpenseBalanceAction
+            expenseId={expenseId}
+            onSettled={() => setPaymentsRefreshKey((current) => current + 1)}
+          />
           <ExpenseMembersAction expenseId={expenseId} />
           <ExpenseShareAction expenseId={expenseId} />
         </>

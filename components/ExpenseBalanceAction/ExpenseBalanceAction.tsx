@@ -5,12 +5,20 @@ import { CircleDollarSign } from 'lucide-react'
 import Button from '@/components/Button'
 import Dialog from '@/components/Dialog'
 import IconButton from '@/components/IconButton/IconButton'
+import ExpenseSettlementManager from '@/components/ExpenseSettlementManager/ExpenseSettlementManager'
 import { useExpenseBalances } from '@/hooks/useExpenseBalances/useExpenseBalances'
 import { useExpenseMembers } from '@/hooks/useExpenseMembers/useExpenseMembers'
 import { formatMinorCurrencyAmount } from '@/lib/utils/money'
 
-export default function ExpenseBalanceAction({ expenseId }: { expenseId: string }) {
+export default function ExpenseBalanceAction({
+  expenseId,
+  onSettled,
+}: {
+  expenseId: string
+  onSettled: () => void
+}) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isCreatingSettlement, setIsCreatingSettlement] = useState(false)
   const membersState = useExpenseMembers(expenseId, isOpen)
   const balancesState = useExpenseBalances(expenseId, isOpen)
   const { members, currency, isLoading: membersLoading, error: membersError, reload: reloadMembers } = membersState
@@ -93,6 +101,31 @@ export default function ExpenseBalanceAction({ expenseId }: { expenseId: string 
 
           {members.length > 0 && balances !== null && currency && currentMember && currentBalance && (
             <>
+              {currentBalance.amountNet < 0 && (
+                <Button
+                  type='button'
+                  className='min-h-11 w-full'
+                  onClick={() => setIsCreatingSettlement((current) => !current)}
+                >
+                  {isCreatingSettlement ? 'Back to balance' : 'Make a settlement'}
+                </Button>
+              )}
+
+              {isCreatingSettlement && currentBalance.amountNet < 0 && (
+                <ExpenseSettlementManager
+                  expenseId={expenseId}
+                  members={members}
+                  balances={balances}
+                  currency={currency}
+                  currentUserId={currentMember.id}
+                  onCreated={() => {
+                    setIsCreatingSettlement(false)
+                    retryBalances()
+                    onSettled()
+                  }}
+                />
+              )}
+
               {otherMembers.length > 1 && (
                 <div className='rounded-lg border border-border bg-muted/30 p-4'>
                   <p className='text-sm font-medium'>Your net across this expense</p>

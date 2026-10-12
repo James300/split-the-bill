@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
-interface ExpensePaymentRecord {
+export interface ExpensePaymentRecord {
   id: number
   expenseId: number
   paidByUserId: string

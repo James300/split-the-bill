@@ -112,28 +112,28 @@ Plan:
 
 Done when each member can see their current amount to pay or receive, from whom/to whom, and how that amount was calculated. The personalized current-user breakdown is implemented, but global group-level suggestions and runtime verification remain outstanding.
 
-## 8. Create a settlement — Not started (API pieces only)
+## 8. Create a settlement — Implemented (runtime unverified)
 
-A settlement POST route and service exist, but there is no settlement form. Validation checks basic fields but does not ensure payer/payee membership, different users, or an amount within the outstanding balance.
-
-Plan:
-
-- [ ] Add a form reachable from a suggested balance, prefilled with the payer, payee, outstanding amount, and date.
-- [ ] Verify payer and payee are members of the expense and are different people.
-- [ ] Prevent settling more than the outstanding balance in that direction; allow partial repayment.
-- [ ] Save and display the settlement only after a successful response, with clear failure recovery.
-- [ ] Verify balances recalculate immediately after settlement.
-
-Done when a user can record that money was actually paid to another member, with the direction and amount unambiguous.
-
-## 9. View settlements — Not started (API pieces only)
-
-The expense-scoped settlement list API exists, but no settlements UI exists.
+A settlement form is available from the balance dialog whenever the current user has a negative balance. It defaults the payer to the current user, defaults the payee when there is only one other member, and defaults the amount to the full available balance for the selected payer/payee direction. Either person can be changed and partial amounts are supported. The server locks the expense row, verifies both members, and recalculates outstanding balances transactionally before accepting a settlement. Success refreshes the balance and combined activity list; failures remain visible in the form.
 
 Plan:
 
-- [ ] Add a mobile-readable history showing payer, payee, amount, currency, and date.
-- [ ] Show an empty state and distinguish recorded repayments from expense payments.
+- [x] Add a form in the balance dialog with default payer, single-counterparty payee, and full outstanding amount.
+- [x] Allow selecting both parties and entering a partial settlement amount.
+- [x] Verify payer/payee membership, distinct users, and current outstanding amount on the server.
+- [x] Save the settlement and refresh balances and activity only after a successful response, with visible failure recovery.
+- [ ] Verify balance recalculation and invalid/over-settlement cases against a live database.
+
+Done when a user can record that money was actually paid to another member, with the direction and amount unambiguous; the UI and API paths are implemented but runtime verification remains.
+
+## 9. View settlements — Implemented (runtime unverified)
+
+The expense ledger now loads settlements alongside payments and sorts both kinds of entries by their recorded timestamps, newest first. Settlements show sender, recipient, amount, and date with a green left border. Payment cards use a blue left border when the current user is owed money by that item and red when they owe another member.
+
+Plan:
+
+- [x] Add a mobile-readable history showing payer, payee, amount, currency, and date.
+- [x] Show settlements in the same newest-first ledger and distinguish repayments from expense payments.
 - [ ] Verify partial, multiple, edited, and deleted settlements affect balances and history consistently.
 
 Done when every expense member can review repayments and reconcile them with the remaining balance.
