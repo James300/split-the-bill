@@ -42,8 +42,10 @@ export default function DateInput({
         <IconButton
           type='button'
           aria-label='Open date picker'
+          aria-controls={id}
+          title='Open date picker'
           onClick={openDatePicker}
-          className='absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 p-0'
+          className='absolute right-1 top-1/2 z-10 h-9 w-9 -translate-y-1/2 p-0'
         >
           <CalendarDays aria-hidden='true' size={17} />
         </IconButton>

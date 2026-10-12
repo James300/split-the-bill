@@ -7,12 +7,14 @@ export default function ExpensePaymentReadBoundary({
   observesUnreadActivity,
   onVisible,
   actionLabel,
+  actionExpanded = false,
   onAction,
 }: {
   label: string
   observesUnreadActivity: boolean
   onVisible: () => void
   actionLabel?: string
+  actionExpanded?: boolean
   onAction?: () => void
 }) {
   const ref = useOnVisible<HTMLLIElement>(observesUnreadActivity, onVisible)
@@ -30,7 +32,7 @@ export default function ExpensePaymentReadBoundary({
         <button
           type='button'
           className='min-h-11 shrink-0 rounded-md px-2 text-primary underline underline-offset-2 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-          aria-expanded='false'
+          aria-expanded={actionExpanded}
           onClick={onAction}
         >
           {actionLabel}

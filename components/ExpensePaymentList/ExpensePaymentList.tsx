@@ -129,12 +129,18 @@ export default function ExpensePaymentList({
       activity.kind === 'settlement' && activity.id === settledByActivityId,
     )
     : -1
-  const visibleActivities = settledActivityIndex >= 0
-    ? activities.slice(0, settledActivityIndex + 1)
+  const settledActivity = settledActivityIndex >= 0
+    ? activities[settledActivityIndex]
+    : undefined
+  const settledActivities = settledActivity
+    ? [settledActivity, ...activities.filter((activity) => activity !== settledActivity)]
     : activities
-  const renderedActivities = isFullySettled && showSettledHistory
-    ? activities
-    : visibleActivities
+  const visibleActivities = isFullySettled && settledActivity
+    ? [settledActivity]
+    : activities
+  const renderedActivities = isFullySettled
+    ? showSettledHistory ? settledActivities : visibleActivities
+    : activities
 
   const lastReadAt = readState.lastReadAt
   const lastReadActivity = readState.lastReadActivity
@@ -158,10 +164,8 @@ export default function ExpensePaymentList({
       readBoundaryIndex = firstReadActivityIndex >= 0 ? firstReadActivityIndex : visibleActivities.length
     }
   }
-  const unreadCount = isFullySettled
-    ? Math.max(0, settledActivityIndex + 1 - (readBoundaryIndex ?? 0))
-    : readBoundaryIndex ?? 0
-  if (isFullySettled) readBoundaryIndex = settledActivityIndex + 1
+  const unreadCount = readBoundaryIndex ?? 0
+  if (isFullySettled) readBoundaryIndex = 1
 
   const markRead = readState.markRead
   const markActivityRead = () => {
@@ -258,9 +262,12 @@ export default function ExpensePaymentList({
                     && !readState.hasMarkedReadThisVisit
                     && !readState.error}
                   onVisible={markActivityRead}
-                  actionLabel={isFullySettled && !showSettledHistory ? 'Show earlier activity' : undefined}
-                  onAction={isFullySettled && !showSettledHistory
-                    ? () => setShowSettledHistory(true)
+                  actionLabel={isFullySettled
+                    ? showSettledHistory ? 'Hide earlier activity' : 'Show earlier activity'
+                    : undefined}
+                  actionExpanded={showSettledHistory}
+                  onAction={isFullySettled
+                    ? () => setShowSettledHistory((expanded) => !expanded)
                     : undefined}
                 />
               )}
@@ -309,7 +316,8 @@ export default function ExpensePaymentList({
               )}
             </Fragment>
           ))}
-          {readBoundaryIndex === renderedActivities.length && (
+          {((isFullySettled && renderedActivities.length === 1)
+            || readBoundaryIndex === renderedActivities.length) && (
             <ExpensePaymentReadBoundary
               key='read-boundary'
               label={isFullySettled ? 'All paid' : unreadCount > 0 ? 'New activity' : 'Already read'}
@@ -319,9 +327,12 @@ export default function ExpensePaymentList({
                 && !readState.hasMarkedReadThisVisit
                 && !readState.error}
               onVisible={markActivityRead}
-              actionLabel={isFullySettled && !showSettledHistory ? 'Show earlier activity' : undefined}
-              onAction={isFullySettled && !showSettledHistory
-                ? () => setShowSettledHistory(true)
+              actionLabel={isFullySettled
+                ? showSettledHistory ? 'Hide earlier activity' : 'Show earlier activity'
+                : undefined}
+              actionExpanded={showSettledHistory}
+              onAction={isFullySettled
+                ? () => setShowSettledHistory((expanded) => !expanded)
                 : undefined}
             />
           )}
