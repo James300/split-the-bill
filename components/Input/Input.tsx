@@ -13,23 +13,28 @@ export interface IInputProps extends React.ComponentProps<'input'> {
 
 function Input({ className, id, label, helperText, hasError, suffixNode, ...props }: IInputProps) {
   const cnClasses = cn(
-    'border-border text-foreground rounded-xl px-3 py-2',
     hasError && 'border-destructive',
     suffixNode && 'pr-10',
     className
   )
 
   return (
-    <>
+    <div className='flex flex-col'>
       {label && <Label id={id}>{label}</Label>}
       <div className='relative'>
-        <InputComponent id={id} className={cnClasses} {...props} />
+        <InputComponent
+          id={id}
+          className={cnClasses}
+          {...props}
+          aria-invalid={hasError || props['aria-invalid']}
+          aria-describedby={props['aria-describedby'] ?? (helperText ? `${id}-helper` : undefined)}
+        />
         {suffixNode}
       </div>
       {helperText && (
-        <p className='text-destructive text-sm mt-1'>{helperText}</p>
+        <p id={`${id}-helper`} className='mt-1 text-sm text-destructive'>{helperText}</p>
       )}
-    </>
+    </div>
   )
 }
 

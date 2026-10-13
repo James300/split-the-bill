@@ -5,7 +5,6 @@ import Button from '@/components/Button'
 import DateInput from '@/components/DateInput/DateInput'
 import Input from '@/components/Input'
 import Select from '@/components/Select/Select'
-import Label from '@/components/typography/Label/Label'
 import type { ExpenseBalance } from '@/hooks/useExpenseBalances/useExpenseBalances'
 import type { ExpenseMember } from '@/hooks/useExpenseMembers/useExpenseMembers'
 import { useCreateExpenseSettlement } from '@/hooks/useCreateExpenseSettlement/useCreateExpenseSettlement'
@@ -116,24 +115,22 @@ export default function ExpenseSettlementManager({
         {initialSettlement ? 'Edit settlement' : 'Settling outstanding amount owed'}
       </h3>
 
-      <div className='flex flex-col gap-1.5'>
-        <Label id='settlement-payer'>From</Label>
-        <Select
-          id='settlement-payer'
-          name='settlement-payer'
-          value={payerUserId}
-          placeholder='Choose who is paying'
-          items={members.map((member) => ({
-            value: member.id,
-            label: `${member.name}${member.isCurrentUser ? ' (you)' : ''}`,
-          }))}
-          onItemSelect={(value) => {
-            setPayerUserId(value)
-            if (value === payeeUserId) setPayeeUserId('')
-            setAmountOverride(null)
-          }}
-        />
-      </div>
+      <Select
+        id='settlement-payer'
+        label='From'
+        name='settlement-payer'
+        value={payerUserId}
+        placeholder='Choose who is paying'
+        items={members.map((member) => ({
+          value: member.id,
+          label: `${member.name}${member.isCurrentUser ? ' (you)' : ''}`,
+        }))}
+        onItemSelect={(value) => {
+          setPayerUserId(value)
+          if (value === payeeUserId) setPayeeUserId('')
+          setAmountOverride(null)
+        }}
+      />
 
       <DateInput
         id='settlement-date'
@@ -142,28 +139,27 @@ export default function ExpenseSettlementManager({
         onChange={setDate}
       />
 
-      <div className='flex flex-col gap-1.5'>
-        <Label id='settlement-payee'>To</Label>
-        <Select
-          id='settlement-payee'
-          name='settlement-payee'
-          value={payeeUserId}
-          placeholder='Choose who is receiving'
-          items={members.filter((member) => member.id !== payerUserId).map((member) => ({
-            value: member.id,
-            label: `${member.name}${member.isCurrentUser ? ' (you)' : ''}`,
-          }))}
-          onItemSelect={(value) => {
-            setPayeeUserId(value)
-            setAmountOverride(null)
-          }}
-        />
-      </div>
+      <Select
+        id='settlement-payee'
+        label='To'
+        name='settlement-payee'
+        value={payeeUserId}
+        placeholder='Choose who is receiving'
+        items={members.filter((member) => member.id !== payerUserId).map((member) => ({
+          value: member.id,
+          label: `${member.name}${member.isCurrentUser ? ' (you)' : ''}`,
+        }))}
+        onItemSelect={(value) => {
+          setPayeeUserId(value)
+          setAmountOverride(null)
+        }}
+      />
 
       <div className='flex flex-col gap-1.5'>
         <Input
           id='settlement-amount'
           label={`Amount (${currency})`}
+          hasError={Boolean(amountError)}
           placeholder={getCurrencyFractionDigits(currency) === 0
             ? '0'
             : `0.${'0'.repeat(getCurrencyFractionDigits(currency))}`}

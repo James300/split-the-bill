@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment } from 'react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import Button from '@/components/Button'
 import ExpensePaymentReadBoundary from '@/components/ExpensePaymentList/ExpensePaymentReadBoundary'
@@ -62,82 +62,97 @@ export default function ExpensePaymentList({
     retry: retrySettlements,
   } = settlementsState
   const currentMember = members.find((member) => member.isCurrentUser)
-  const membersById = new Map(members.map((member) => [member.id, member.name]))
-  const allocationsByPayment = new Map<number, typeof allocations>()
+  const {
+    membersById,
+    allocationsByPayment,
+    activities,
+    settledActivity,
+    settledActivities,
+    isFullySettled,
+  } = useMemo(() => {
+    const membersById = new Map(members.map((member) => [member.id, member.name]))
+    const allocationsByPayment = new Map<number, typeof allocations>()
 
-  for (const allocation of allocations) {
-    const current = allocationsByPayment.get(allocation.payment_id) ?? []
-    current.push(allocation)
-    allocationsByPayment.set(allocation.payment_id, current)
-  }
+    for (const allocation of allocations) {
+      const current = allocationsByPayment.get(allocation.payment_id) ?? []
+      current.push(allocation)
+      allocationsByPayment.set(allocation.payment_id, current)
+    }
 
-  const activities = [
-    ...payments.map((payment) => ({
-      kind: 'payment' as const,
-      record: payment,
-      id: payment.id,
-      date: payment.date,
-      createdAt: payment.createdAt,
-    })),
-    ...settlements.map((settlement) => ({
-      kind: 'settlement' as const,
-      record: settlement,
-      id: settlement.id,
-      date: settlement.date,
-      createdAt: settlement.createdAt,
-    })),
-  ].sort(compareActivityOrder)
-  const activityBalances = new Map<string, number>()
-  let settledByActivityId: number | null = null
-  const chronologicalActivities = [...activities]
-    .filter((activity) => !activity.record.deletedAt)
-    .sort((left, right) =>
-      left.createdAt - right.createdAt
-      || left.id - right.id
-      || (left.kind === right.kind ? 0 : left.kind === 'payment' ? -1 : 1),
-    )
-
-  for (const activity of chronologicalActivities) {
-    if (activity.kind === 'payment') {
-      const payment = activity.record
-      activityBalances.set(
-        payment.paidByUserId,
-        (activityBalances.get(payment.paidByUserId) ?? 0) + payment.amount,
+    const activities = [
+      ...payments.map((payment) => ({
+        kind: 'payment' as const,
+        record: payment,
+        id: payment.id,
+        date: payment.date,
+        createdAt: payment.createdAt,
+      })),
+      ...settlements.map((settlement) => ({
+        kind: 'settlement' as const,
+        record: settlement,
+        id: settlement.id,
+        date: settlement.date,
+        createdAt: settlement.createdAt,
+      })),
+    ].sort(compareActivityOrder)
+    const activityBalances = new Map<string, number>()
+    let settledByActivityId: number | null = null
+    const chronologicalActivities = [...activities]
+      .filter((activity) => !activity.record.deletedAt)
+      .sort((left, right) =>
+        left.createdAt - right.createdAt
+        || left.id - right.id
+        || (left.kind === right.kind ? 0 : left.kind === 'payment' ? -1 : 1),
       )
-      for (const allocation of allocationsByPayment.get(payment.id) ?? []) {
+
+    for (const activity of chronologicalActivities) {
+      if (activity.kind === 'payment') {
+        const payment = activity.record
         activityBalances.set(
-          allocation.user_id,
-          (activityBalances.get(allocation.user_id) ?? 0) - allocation.amount,
+          payment.paidByUserId,
+          (activityBalances.get(payment.paidByUserId) ?? 0) + payment.amount,
         )
-      }
-    } else {
-      const settlement = activity.record
-      activityBalances.set(
-        settlement.payerUserId,
-        (activityBalances.get(settlement.payerUserId) ?? 0) + settlement.amount,
-      )
-      activityBalances.set(
-        settlement.payeeUserId,
-        (activityBalances.get(settlement.payeeUserId) ?? 0) - settlement.amount,
-      )
-      if ([...activityBalances.values()].every((balance) => balance === 0)) {
-        settledByActivityId = settlement.id
+        for (const allocation of allocationsByPayment.get(payment.id) ?? []) {
+          activityBalances.set(
+            allocation.user_id,
+            (activityBalances.get(allocation.user_id) ?? 0) - allocation.amount,
+          )
+        }
+      } else {
+        const settlement = activity.record
+        activityBalances.set(
+          settlement.payerUserId,
+          (activityBalances.get(settlement.payerUserId) ?? 0) + settlement.amount,
+        )
+        activityBalances.set(
+          settlement.payeeUserId,
+          (activityBalances.get(settlement.payeeUserId) ?? 0) - settlement.amount,
+        )
+        if ([...activityBalances.values()].every((balance) => balance === 0)) {
+          settledByActivityId = settlement.id
+        }
       }
     }
-  }
-  const isFullySettled = settledByActivityId !== null
-    && [...activityBalances.values()].every((balance) => balance === 0)
-  const settledActivityIndex = isFullySettled
-    ? activities.findIndex((activity) =>
-      activity.kind === 'settlement' && activity.id === settledByActivityId,
-    )
-    : -1
-  const settledActivity = settledActivityIndex >= 0
-    ? activities[settledActivityIndex]
-    : undefined
-  const settledActivities = settledActivity
-    ? [settledActivity, ...activities.filter((activity) => activity !== settledActivity)]
-    : activities
+    const isFullySettled = settledByActivityId !== null
+      && [...activityBalances.values()].every((balance) => balance === 0)
+    const settledActivity = isFullySettled
+      ? activities.find((activity) =>
+        activity.kind === 'settlement' && activity.id === settledByActivityId,
+      )
+      : undefined
+    const settledActivities = settledActivity
+      ? [settledActivity, ...activities.filter((activity) => activity !== settledActivity)]
+      : activities
+
+    return {
+      membersById,
+      allocationsByPayment,
+      activities,
+      settledActivity,
+      settledActivities,
+      isFullySettled,
+    }
+  }, [allocations, members, payments, settlements])
   const visibleActivities = isFullySettled && settledActivity
     ? [settledActivity]
     : activities

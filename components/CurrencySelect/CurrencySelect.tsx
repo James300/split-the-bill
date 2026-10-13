@@ -17,6 +17,7 @@ function CurrencySelect({
 }: ICurrencySelectProps) {
   return (
     <Combobox
+      id='expense-currency'
       className={className}
       emptyLabel='No currencies found'
       items={currencyNames}

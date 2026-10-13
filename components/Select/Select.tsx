@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select'
+import Label from '@/components/typography/Label/Label'
 
 export interface ISelectItem {
   checked?: boolean
@@ -21,26 +22,51 @@ export interface ISelectProps {
   items: ISelectItem[]
   name: string
   placeholder: string
+  label?: string
+  helperText?: string
+  hasError?: boolean
   required?: boolean
   value?: string
   onItemSelect?: (value: string) => void
 }
 
-function Select({ className, id, items, name, placeholder, onItemSelect, ...props }: ISelectProps) {
+function Select({
+  className,
+  id,
+  items,
+  name,
+  placeholder,
+  label,
+  helperText,
+  hasError,
+  onItemSelect,
+  ...props
+}: ISelectProps) {
+  const triggerId = id ?? name
+
   return (
-    <SelectComponent {...props} name={name} onValueChange={onItemSelect}>
-      <SelectTrigger id={id} className={cn(className, "border-(--text-border-light) rounded-xl px-3 py-2 w-full")}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent className="border-(--text-border-light)">
-        {items.map((item) => (
-          <SelectItem key={item.value} value={item.value}>
-            {item.label}
-            {item.checked && <BadgeCheck />}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </SelectComponent>
+    <div className='flex flex-col'>
+      {label && <Label id={triggerId}>{label}</Label>}
+      <SelectComponent {...props} name={name} onValueChange={onItemSelect}>
+        <SelectTrigger
+          id={triggerId}
+          aria-invalid={hasError}
+          aria-describedby={helperText ? `${triggerId}-helper` : undefined}
+          className={cn(className, hasError && 'border-destructive')}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {items.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+              {item.checked && <BadgeCheck />}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </SelectComponent>
+      {helperText && <p id={`${triggerId}-helper`} className='mt-1 text-sm text-destructive'>{helperText}</p>}
+    </div>
   )
 }
 

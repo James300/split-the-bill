@@ -23,6 +23,7 @@ import Label from '../typography/Label/Label'
 
 export interface IComboboxProps {
   className?: string
+  id?: string
   emptyLabel: string
   items: string[]
   itemShortcuts?: string[]
@@ -36,6 +37,7 @@ export interface IComboboxProps {
 
 export function Combobox({
   className,
+  id,
   emptyLabel,
   items,
   itemShortcuts,
@@ -46,6 +48,7 @@ export function Combobox({
   hasError,
   onChange,
 }: IComboboxProps) {
+  const controlId = id ?? 'combobox'
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState('')
 
@@ -59,24 +62,28 @@ export function Combobox({
   )
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <div className='flex flex-col'>
+      <Popover open={open} onOpenChange={setOpen}>
       {label && (
-        <Label id='combobox-label'>
+        <Label id={controlId}>
           {label}
         </Label>
       )}
       <PopoverTrigger asChild>
         <Button
-          id='combobox-label'
+          id={controlId}
           variant='outline'
           role='combobox'
           aria-expanded={open}
+          aria-invalid={hasError}
+          aria-describedby={helperText ? `${controlId}-helper` : undefined}
           className={cn(
-            'w-full justify-between text-md md:text-sm p-5! rounded-xl',
+            'h-11 w-full justify-between rounded-xl px-3 py-2 text-sm text-foreground',
+            className,
             hasError && 'border-destructive'
           )}
         >
-          {!value && placeholder && <div className='text-placeholder'>{placeholder}</div>}
+          {!value && placeholder && <div className='text-muted-foreground'>{placeholder}</div>}
           {value ? value : undefined}
           <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
         </Button>
@@ -120,8 +127,9 @@ export function Combobox({
         </Command>
       </PopoverContent>
       {helperText && (
-        <p className='text-destructive text-sm mt-1'>{helperText}</p>
+        <p id={`${controlId}-helper`} className='mt-1 text-sm text-destructive'>{helperText}</p>
       )}
-    </Popover>
+      </Popover>
+    </div>
   )
 }

@@ -24,26 +24,22 @@ function ExpenseForm({
   isSubmitting = false,
 }: IExpenseFormProps) {
   return (
-    <div className='flex flex-col'>
-      <div className='mb-4'>
-        <Input
-          id='expense-name' 
-          label='Name' 
-          placeholder='Give your expense a name...' 
-          helperText={validationErrors.name}
-          hasError={!!validationErrors.name}
-          onChange={onNameChange} 
-        />
-      </div>
-      <div>
-        <CurrencySelect 
-          helperText={validationErrors.currency}
-          hasError={!!validationErrors.currency}
-          onChange={onCurrencyChange} 
-        />
-      </div>
+    <div className='flex flex-col gap-4'>
+      <Input
+        id='expense-name'
+        label='Name'
+        placeholder='Give your expense a name...'
+        helperText={validationErrors.name}
+        hasError={!!validationErrors.name}
+        onChange={onNameChange}
+      />
+      <CurrencySelect
+        helperText={validationErrors.currency}
+        hasError={!!validationErrors.currency}
+        onChange={onCurrencyChange}
+      />
       <Button 
-        className='mt-8' 
+        className='mt-2'
         onClick={onSubmit}
         disabled={isSubmitting}
       >

@@ -10,7 +10,7 @@ function Label({
   id,
 }: ILabelProps) {
   return (
-    <label htmlFor={id} className='text-label text-sm font-medium mb-1'>{children}</label>
+    <label htmlFor={id} className='mb-1.5 block text-label text-sm leading-5 font-medium'>{children}</label>
   )
 }
 

@@ -6,7 +6,6 @@ import DateInput from '@/components/DateInput/DateInput'
 import Input from '@/components/Input'
 import Select from '@/components/Select/Select'
 import Switch from '@/components/Switch/Switch'
-import Label from '@/components/typography/Label/Label'
 import type { useExpenseMembers } from '@/hooks/useExpenseMembers/useExpenseMembers'
 import { useCreateExpensePayment } from '@/hooks/useCreateExpensePayment/useCreateExpensePayment'
 import type { ExpensePaymentRecord } from '@/hooks/useExpensePayments/useExpensePayments'
@@ -132,18 +131,16 @@ export default function ExpensePaymentManager({
 
   return (
     <form className='flex min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain pr-2' onSubmit={handleSubmit}>
-      <div className='flex flex-col gap-1.5'>
-        <Input
-          id='payment-description'
-          label='What was it for?'
-          placeholder='Hotel, taxi, dinner…'
-          value={description}
-          maxLength={255}
-          required
-          autoComplete='off'
-          onChange={(event) => setDescriptionOverride(event.currentTarget.value)}
-        />
-      </div>
+      <Input
+        id='payment-description'
+        label='What was it for?'
+        placeholder='Hotel, taxi, dinner…'
+        value={description}
+        maxLength={255}
+        required
+        autoComplete='off'
+        onChange={(event) => setDescriptionOverride(event.currentTarget.value)}
+      />
 
       <DateInput
         id='payment-date'
@@ -156,6 +153,7 @@ export default function ExpensePaymentManager({
         <Input
           id='payment-amount'
           label={`Amount (${currency})`}
+          hasError={Boolean(amountError)}
           placeholder={fractionDigits === 0 ? '0' : `0.${'0'.repeat(fractionDigits)}`}
           inputMode='decimal'
           type='text'
@@ -168,19 +166,18 @@ export default function ExpensePaymentManager({
         {amountError && <p id='payment-amount-error' className='text-sm text-destructive'>{amountError}</p>}
       </div>
 
-      <div className='flex flex-col gap-1.5'>
-        <Label id='payment-payer'>Paid by</Label>
-        <Select
-          name='payment-payer'
-          value={paidByUserId}
-          placeholder='Choose who paid'
-          items={members.map((member) => ({
-            value: member.id,
-            label: `${member.name}${member.isCurrentUser ? ' (you)' : ''}`,
-          }))}
-          onItemSelect={setSelectedPayerUserId}
-        />
-      </div>
+      <Select
+        id='payment-payer'
+        label='Paid by'
+        name='payment-payer'
+        value={paidByUserId}
+        placeholder='Choose who paid'
+        items={members.map((member) => ({
+          value: member.id,
+          label: `${member.name}${member.isCurrentUser ? ' (you)' : ''}`,
+        }))}
+        onItemSelect={setSelectedPayerUserId}
+      />
 
       <fieldset className='flex flex-col gap-3'>
         <legend className='mb-1 text-sm font-medium'>Split with</legend>
