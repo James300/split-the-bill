@@ -1,5 +1,6 @@
 import { pool } from '@/lib/db'
 import { BadRequestError, NotFoundError } from '@/lib/errors/domain'
+import { assertExpenseWritable } from '@/lib/db/expense.repo'
 import type { PoolClient } from '@neondatabase/serverless'
 import {
   Settlement,
@@ -110,18 +111,7 @@ export async function createSettlementInDatabase(
     if (!(await hasSettlementCreatorColumn(client))) {
       throw new BadRequestError('Apply database migration 0005_ledger_item_history before adding settlements.')
     }
-    const expense = await client.query(
-      `SELECT id FROM expense WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`,
-      [input.expense_id],
-    )
-    if (expense.rowCount === 0) {
-      throw new NotFoundError()
-    }
-    const actorMembership = await client.query(
-      `SELECT 1 FROM user_expense WHERE expense_id = $1 AND user_id::text = $2`,
-      [input.expense_id, actorUserId],
-    )
-    if (actorMembership.rowCount === 0) throw new NotFoundError()
+    await assertExpenseWritable(client, actorUserId, input.expense_id)
 
     await assertSettlementAllowed(
       client,
@@ -224,13 +214,7 @@ export async function updateSettlementInDatabase(
     }
 
     const expenseId = existingExpense.rows[0].expense_id
-    const expense = await client.query(
-      `SELECT id FROM expense WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`,
-      [expenseId],
-    )
-    if (expense.rowCount === 0) {
-      throw new NotFoundError()
-    }
+    await assertExpenseWritable(client, actorUserId, expenseId)
     const existingResult = await client.query<Settlement>(
       `SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id
        FROM settlement s
@@ -329,11 +313,7 @@ export async function deleteSettlementFromDatabase(id: number, actorUserId: stri
       return false
     }
 
-    const expense = await client.query(
-      `SELECT id FROM expense WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`,
-      [existingExpense.rows[0].expense_id],
-    )
-    if (expense.rowCount === 0) throw new NotFoundError()
+    await assertExpenseWritable(client, actorUserId, existingExpense.rows[0].expense_id)
 
     const existing = await client.query<Settlement>(
       `SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id

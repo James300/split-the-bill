@@ -37,6 +37,9 @@ Keep foreground and background color pairs accessible in both light and dark the
 
 ### Expenses and payments
 
+- Expenses can be archived only by their recorded creator, from the expense page, after a confirmation that highlights any unresolved balances. Archiving is permanent; do not offer unarchive controls.
+- Hide archived expenses from the default expenses list. A “Show archived” control reveals them after the active expenses under an “Archived” divider. Show an “Archived” badge on the list card and expense page.
+- Archived expenses remain readable, including their activity, balances, and member list, but are read-only: block expense edits, member changes, invitation changes/joins, payment and settlement creation, edits, and deletions. Enforce this on the server as well as hiding mutation controls in the UI.
 - Each expense has one name and one currency. A payment belongs to exactly one expense and records its total, the member who paid, and a user-selected date. Default the date to the current local date in the entry form; allow clearing it, in which case display and order by the payment's creation date. Display dates only, never times.
 - A payment allocation records the share owed by one expense member for that payment. There may be multiple allocations covering only participants in that particular purchase; being an expense member does not mean that person shares every payment.
 - Allocations for a payment must add up exactly to its total. Reject allocations to non-members, duplicate participant allocations, zero or negative shares, or a payment with no allocations. Split remainders deterministically in the smallest currency unit and show the resulting shares before save.

@@ -38,7 +38,7 @@ export async function revokeExpenseInvitation(
   invitationId: number,
 ): Promise<void> {
   await requireExpenseMember(userId, expenseId)
-  await revokeExpenseInvitationInDatabase(expenseId, invitationId)
+  await revokeExpenseInvitationInDatabase(userId, expenseId, invitationId)
 }
 
 export async function getExpenseInvitationPreview(token: string) {

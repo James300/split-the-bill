@@ -6,12 +6,13 @@ export interface IExpense extends IEntity {
   description?: string
   userIds: string[]
   createdByUserId?: string | null
+  archivedAt?: number | null
 }
 
-export interface ICreateExpense extends Omit<
+export type ICreateExpense = Omit<
   IExpense,
   'id' | 'createdAt' | 'updatedAt' | 'userIds'
-> {}
+>
 
 export interface IExpenseUserOwed {
   userId: string

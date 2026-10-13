@@ -1,5 +1,6 @@
 import {
   addUserToExpenseInDatabase,
+  archiveExpenseInDatabase,
   createExpenseInDatabase,
   deleteExpenseFromDatabase,
   getExpenseFromDatabaseById,
@@ -54,8 +55,15 @@ export async function getExpenseMembers(userId: string, expenseId: number) {
   return getExpenseMembersFromDatabase(userId, expenseId)
 }
 
-export async function getExpensesByUserId(userId: string): Promise<Expense[]> {
-  return getExpensesFromDatabaseByUserId(userId)
+export async function getExpensesByUserId(
+  userId: string,
+  includeArchived = false,
+): Promise<Expense[]> {
+  return getExpensesFromDatabaseByUserId(userId, includeArchived)
+}
+
+export async function archiveExpense(userId: string, expenseId: number): Promise<Expense> {
+  return archiveExpenseInDatabase(userId, expenseId)
 }
 
 export async function getExpensesByUserIdSince(userId: string, since: number): Promise<Expense[]> {

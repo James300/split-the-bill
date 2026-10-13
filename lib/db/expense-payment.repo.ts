@@ -1,5 +1,6 @@
 import { pool } from '@/lib/db'
-import { BadRequestError, NotFoundError } from '@/lib/errors/domain'
+import { assertExpenseWritable } from '@/lib/db/expense.repo'
+import { BadRequestError } from '@/lib/errors/domain'
 import type { ExpensePaymentCreateInput, Payment } from '@/lib/schemas/payment.schema'
 import type { PaymentAllocation } from '@/lib/schemas/payment-allocation.schema'
 import { sortMemberIds } from '@/lib/utils/money'
@@ -33,18 +34,7 @@ export async function createExpensePaymentInDatabase(
       throw new BadRequestError('Apply database migration 0006_ledger_activity_dates_and_read_cursor before adding payments.')
     }
 
-    const expenseAccess = await client.query<{ id: number }>(
-      `SELECT e.id
-       FROM expense e
-       JOIN user_expense actor ON actor.expense_id = e.id
-         AND actor.user_id::text = $2
-       WHERE e.id = $1 AND e.deleted_at IS NULL
-       FOR UPDATE OF e`,
-      [input.expenseId, actorUserId],
-    )
-    if (expenseAccess.rowCount === 0) {
-      throw new NotFoundError()
-    }
+    await assertExpenseWritable(client, actorUserId, input.expenseId)
 
     const requiredMemberIds = [...new Set([input.paidByUserId, ...input.participantUserIds])]
     const memberResult = await client.query<{ id: string }>(

@@ -5,11 +5,15 @@ The BE will map outgoing data to the BE from camelCase to snake_case.
 
 | Method | Endpoint            | Purpose                     | Request Body         | Response        |
 | ------ | ------------------- | --------------------------- | -------------------- | --------------- |
-| GET    | `/api/expenses`     | List expenses (read model)  | —                    | `ExpenseRead[]` |
+| GET    | `/api/expenses`     | List active expenses; `?includeArchived=true` includes archived ones | — | `ExpenseRead[]` |
 | GET    | `/api/expenses/:id` | Expense detail (read model) | —                    | `ExpenseRead`   |
 | POST   | `/api/expenses`     | Create expense              | `ExpenseCreateInput` | `ExpenseRead`   |
 | PATCH  | `/api/expenses/:id` | Update expense metadata     | `ExpenseUpdateInput` | `ExpenseRead`   |
 | DELETE | `/api/expenses/:id` | Delete expense              | —                    | `200`           |
+| POST   | `/api/expenses/:id/archive` | Permanently archive as the expense creator | — | `ExpenseRead` |
+
+Archived expenses are read-only; they remain available through the detail, member, balance, and
+activity read endpoints. Expense, member, invitation, payment, and settlement changes are rejected.
 
 
 ### Payments

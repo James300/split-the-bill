@@ -18,10 +18,11 @@ export async function POST(request: Request) {
   })
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   return runRoute(async () => {
     const userId = await getSessionUserId()
-    const expenses = await getExpensesByUserId(userId)
+    const includeArchived = new URL(request.url).searchParams.get('includeArchived') === 'true'
+    const expenses = await getExpensesByUserId(userId, includeArchived)
     return json(entityArrayToMap(expenses.map(mapExpenseRecord)))
   })
 }

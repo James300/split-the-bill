@@ -63,6 +63,16 @@ Suggested tags: `@smoke`, `@auth`, `@expenses`, `@invitations`, `@members`, `@pa
 2. **B-002 @expenses — Open and close create dialog.** Open from title-row action; verify dialog title/content, focus placement, close button, Escape, and return focus.
 3. **B-003 @expenses — Create expense.** Enter a unique name and currency; save; verify dialog closes, list refreshes, new expense card appears, and creator is its first member.
 4. **B-004 @expenses — Required name.** Submit blank name; verify no request or persisted row and clear field feedback.
+5. **B-005 @expenses — Archived expenses hidden by default.** As a member with active and archived expenses, verify the initial list contains active expenses only and no archived section.
+6. **B-006 @expenses — Show archived expenses.** Select “Show archived”; verify archived expenses load after active expenses under the Archived divider and each archived card has an Archived badge. Verify active items stay above the divider.
+7. **B-007 @expenses — Hide archived expenses.** After showing archived items, select “Hide archived”; verify archived cards and divider disappear while active cards remain.
+8. **B-008 @expenses @recovery — Archived list load failure.** Fail the include-archived list request; verify a visible error and that the active list remains usable and unchanged.
+9. **B-009 @expenses @mobile — Archived list on phone.** At 390x844, show archived expenses and verify the control, badges, divider, and expense cards fit without horizontal overflow.
+10. **B-010 @expenses @authorization — Archive action is creator-only.** As Alice, verify the archive icon action is available; as Bob, verify it is absent even though Bob is a member.
+11. **B-011 @expenses — Archive confirmation shows outstanding balances.** Seed nonzero member balances; open archive confirmation and verify it identifies who owes the group or whom the group owes, with currency and amount. With a fully settled ledger, verify the settled message.
+12. **B-012 @expenses — Archive an expense.** As Alice, confirm archive; verify the Archived badge appears on the expense page and the page remains readable. Navigate away and return; verify the state persists.
+13. **B-013 @expenses @authorization — Archived expense is read-only.** As a member, verify payment creation, settlement creation, payment/settlement edit/delete, member removal/addition, and invitation actions are unavailable while members, balances, and activity remain viewable.
+14. **B-014 @expenses @recovery — Archive request failure.** Force the archive endpoint to fail; verify the expense remains active, the confirmation stays recoverable, and a visible error is shown.
 5. **B-005 @expenses — Whitespace-only name.** Submit whitespace; verify it is rejected or normalized according to schema, never stored as an empty-looking expense.
 6. **B-006 @expenses — Name bounds.** Test minimum, maximum, and over-maximum lengths; verify valid boundary values save and invalid values receive validation feedback.
 7. **B-007 @expenses — Invalid/missing currency.** Attempt submission without a selection or with a tampered currency; verify client/server rejection.
@@ -264,6 +274,11 @@ Suggested tags: `@smoke`, `@auth`, `@expenses`, `@invitations`, `@members`, `@pa
 10. **J-010 @authorization — SQL/HTML injection-shaped input.** Use harmless special-character strings in expense name/description/member name rendering; verify values render as text, remain scoped, and do not execute markup or alter another record.
 11. **J-011 @authorization — Read cursor membership.** A non-member cannot read or advance another member's cursor; a member cannot write another member's cursor.
 12. **J-012 @authorization — Invitation token handling.** Ensure raw token is accepted only through intended join/preview path, not exposed in logs, unrelated API responses, or persisted client storage.
+13. **J-013 @authorization @expenses — Archive requires expense creator.** As a current member who is not the recorded creator, POST to `/api/expenses/:id/archive`; verify a forbidden response and unchanged `archived_at`. As the creator, verify the request succeeds.
+14. **J-014 @authorization @expenses — Archived expense rejects metadata and membership writes.** After archive, attempt expense PATCH/DELETE, member add/remove, and invite creation/revocation; verify each fails and no data changes.
+15. **J-015 @authorization @payments — Archived expense rejects payment writes.** Attempt payment create/edit/delete and direct allocation mutation against an archived expense; verify each is rejected and payment/allocation history remains unchanged.
+16. **J-016 @authorization @settlements — Archived expense rejects settlement writes.** Attempt settlement create/edit/delete against an archived expense; verify each is rejected and settlement history and balances remain unchanged.
+17. **J-017 @authorization @concurrency — Archive serializes with writes.** Race archive against a payment or settlement write. Verify either the write completes before archive and is retained, or archive completes first and the write is rejected; no mutation can commit after archived state.
 
 ## K. Refreshing, navigation, and concurrency
 

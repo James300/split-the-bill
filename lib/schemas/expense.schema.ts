@@ -9,6 +9,7 @@ export const ExpenseSchema = z.object({
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
   deleted_at: z.coerce.date().nullish(),
+  archived_at: z.coerce.date().nullish(),
   created_by_user_id: z.string().nullish(),
   user_ids: z.array(z.string().min(1)),
 })

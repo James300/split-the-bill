@@ -1,6 +1,6 @@
 # Core functionality plan
 
-This plan describes the core flows for the trip and shared-expense use case. Status reflects source changes made on 2026-10-12. Migrations 0004 and 0006 were applied to the configured database. Settlement and activity-read UI flows have not been end-to-end tested.
+This plan describes the core flows for the trip and shared-expense use case. Status reflects source changes made on 2026-10-13. Migrations 0004 and 0006 were applied to the configured database. Settlement and activity-read UI flows have not been end-to-end tested.
 
 Status key: **Implemented (runtime unverified)** means the main code path and expected states are implemented, but still need an environment-backed check; **Partial** means a blocking gap or bug remains; **Not started** means the end-user feature is missing.
 
@@ -35,13 +35,15 @@ Done when an authenticated user can create a named, single-currency expense on a
 
 ## 3. List expenses the user belongs to — Implemented (runtime unverified)
 
-The signed-in home page now loads expenses through the member-scoped service, which filters out soft-deleted expenses, and renders expense cards. It shows an empty state and a visible error if loading fails. The path has not been exercised with a live session/database.
+The signed-in home page now loads active expenses through the member-scoped service, which filters out soft-deleted and archived expenses, and renders expense cards. “Show archived” fetches archived items on demand and displays them below active expenses under an archived divider, with an Archived badge. It shows an empty state and a visible error if loading fails. The path has not been exercised with a live session/database.
 
 Plan:
 
 - [x] Verify only the current user's active expenses appear, ordered with recently updated expenses first.
 - [x] Add a helpful empty state with a clear create-expense action in the page title row.
 - [x] Add a visible error state; check the layout on a narrow phone viewport.
+- [x] Hide archived expenses by default and show them below active expenses, separated by an Archived line, when requested.
+- [x] Mark archived expenses with a badge in the expenses list.
 - [ ] Verify expenses joined by invitation appear in the same list.
 
 Done when a user can reliably find every expense they belong to, open it, and understand what to do when the list is empty or unavailable.
@@ -255,6 +257,23 @@ Build on the shared expense state from Phase 2. Persist loaded expense store sli
 - [ ] Test offline creation and reload, reconnect review ordering/progress, edit and delete, partial replay, authorization/balance conflicts, interrupted responses, duplicate prevention, and account switching.
 
 Done when a member can reopen a previously viewed expense offline, identify cached information as potentially stale, queue payment or settlement drafts without claiming they are committed, then review and explicitly submit/edit/delete every draft after reconnecting. Successful changes appear once in the authoritative ledger and balances; unresolved drafts remain recoverable.
+
+## Archive expenses — Implemented (runtime unverified)
+
+The recorded expense creator can archive from an icon action on the expense page. A confirmation dialog checks current member balances, highlights any unresolved balances, and warns that archiving is permanent. Archived expenses remain available for viewing their activity, balances, and members; their expense, member, invitation, payment, and settlement mutations are rejected by the server and corresponding UI controls are hidden. Archived status is shown on the expense page and list card. The list hides archived items by default and loads them on demand below active expenses with an Archived divider. No unarchive flow is provided. Migration `0007_expense_archive.sql` was applied to the configured database on 2026-10-13. E2E acceptance scenarios are in `e2e.readme`; they are not yet executable because the repository does not have Playwright configuration or fixtures.
+
+Plan:
+
+- [x] Add `expense.archived_at` with an additive migration and expose it through expense read models.
+- [x] Add a creator-only archive endpoint and title-row action with a confirmation modal and unresolved-balance warning.
+- [x] Keep archived expenses readable while rejecting all expense, membership, invitation, payment, and settlement changes.
+- [x] Hide archived items by default; add an on-demand show/hide control, divider, and Archived badges.
+- [x] Apply migration `lib/db/migrations/0007_expense_archive.sql` with `npm run db:migrate`.
+- [x] Add archive acceptance scenarios to the E2E test catalog.
+- [ ] Verify creator/non-creator authorization, archive racing with writes, unresolved-balance messaging, and the read-only UI against a live database.
+- [ ] Verify list ordering and archived visibility on narrow mobile viewports.
+
+Done when only the recorded creator can archive from the expense page, the confirmation clearly identifies any unresolved balances, archived data remains viewable but immutable, and archived items are hidden unless explicitly shown.
 
 ## Review notes
 

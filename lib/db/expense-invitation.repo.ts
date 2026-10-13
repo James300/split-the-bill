@@ -1,7 +1,8 @@
 import { pool } from '@/lib/db'
 import { initializeExpenseUserReadState } from '@/lib/db/expense-read-state.repo'
 import type { ExpenseInvitation, ExpenseInvitationPreview } from '@/lib/schemas/expense-invitation.schema'
-import { NotFoundError } from '@/lib/errors/domain'
+import { BadRequestError, NotFoundError } from '@/lib/errors/domain'
+import { assertExpenseWritable } from '@/lib/db/expense.repo'
 
 export interface ExpenseInvitationSummary {
   id: number
@@ -20,7 +21,7 @@ export async function createExpenseInvitationInDatabase(
     await client.query('BEGIN')
 
     const expenseResult = await client.query(
-      `SELECT e.id
+      `SELECT e.id, e.archived_at
        FROM expense e
        JOIN user_expense ue ON ue.expense_id = e.id
        WHERE e.id = $1 AND ue.user_id = $2 AND e.deleted_at IS NULL
@@ -30,6 +31,9 @@ export async function createExpenseInvitationInDatabase(
 
     if (expenseResult.rowCount === 0) {
       throw new NotFoundError()
+    }
+    if (expenseResult.rows[0].archived_at) {
+      throw new BadRequestError('This expense is archived and cannot be changed.')
     }
 
     await client.query(
@@ -74,18 +78,27 @@ export async function listActiveExpenseInvitationsInDatabase(
 }
 
 export async function revokeExpenseInvitationInDatabase(
+  requesterId: string,
   expenseId: number,
   invitationId: number,
 ): Promise<void> {
-  const result = await pool.query(
-    `UPDATE expense_invitation
-     SET revoked_at = NOW()
-     WHERE expense_id = $1 AND id = $2 AND revoked_at IS NULL`,
-    [expenseId, invitationId],
-  )
-
-  if (result.rowCount === 0) {
-    throw new NotFoundError()
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await assertExpenseWritable(client, requesterId, expenseId)
+    const result = await client.query(
+      `UPDATE expense_invitation
+       SET revoked_at = NOW()
+       WHERE expense_id = $1 AND id = $2 AND revoked_at IS NULL`,
+      [expenseId, invitationId],
+    )
+    if (result.rowCount === 0) throw new NotFoundError()
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
   }
 }
 
@@ -103,7 +116,8 @@ export async function getExpenseInvitationPreviewFromDatabase(
      WHERE ei.token_hash = $1
        AND ei.revoked_at IS NULL
        AND ei.expires_at > NOW()
-       AND e.deleted_at IS NULL`,
+       AND e.deleted_at IS NULL
+       AND e.archived_at IS NULL`,
     [tokenHash],
   )
 
@@ -144,7 +158,8 @@ export async function joinExpenseWithInvitationInDatabase(
          AND ei.revoked_at IS NULL
          AND ei.expires_at > NOW()
          AND e.deleted_at IS NULL
-       FOR UPDATE OF ei`,
+         AND e.archived_at IS NULL
+       FOR UPDATE OF e, ei`,
       [tokenHash],
     )
 

@@ -20,6 +20,7 @@ export default function ExpenseBalanceAction({
   onEditComplete,
   refreshKey,
   pageRefreshKey,
+  isArchived = false,
 }: {
   expenseId: string
   onSettled: () => void
@@ -27,10 +28,12 @@ export default function ExpenseBalanceAction({
   onEditComplete: () => void
   refreshKey: number
   pageRefreshKey: number
+  isArchived?: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isCreatingSettlement, setIsCreatingSettlement] = useState(false)
-  const isDialogOpen = isOpen || Boolean(editingSettlement)
+  const isEditingSettlement = Boolean(editingSettlement) && !isArchived
+  const isDialogOpen = isOpen || isEditingSettlement
   const membersState = useExpenseMembers(expenseId, isDialogOpen, pageRefreshKey)
   const balancesState = useExpenseBalances(expenseId, isDialogOpen, refreshKey, pageRefreshKey)
   const paymentsState = useExpensePayments(expenseId, refreshKey, isDialogOpen, pageRefreshKey)
@@ -103,10 +106,10 @@ export default function ExpenseBalanceAction({
         open={isDialogOpen}
         onOpenChange={(open) => {
           setIsOpen(open)
-          if (!open && editingSettlement) onEditComplete()
+          if (!open && isEditingSettlement) onEditComplete()
         }}
-        title={editingSettlement ? 'Edit settlement' : 'Your balance'}
-        description={editingSettlement
+        title={isEditingSettlement ? 'Edit settlement' : 'Your balance'}
+        description={isEditingSettlement
           ? 'Update the settlement details.'
           : 'See the suggested amounts between you and each other member.'}
         className='max-h-[90dvh] overflow-y-auto'
@@ -143,7 +146,7 @@ export default function ExpenseBalanceAction({
 
           {members.length > 0 && balances !== null && currency && currentMember && currentBalance && (
             <>
-              {!isCreatingSettlement && !editingSettlement && (
+              {!isCreatingSettlement && !isEditingSettlement && (
                 <>
                   {otherMembers.length > 1 && (
                     <div className='rounded-lg border border-border bg-muted/30 p-4'>
@@ -207,7 +210,7 @@ export default function ExpenseBalanceAction({
                 </>
               )}
 
-              {currentBalance.amountNet < 0 && !editingSettlement && (
+              {currentBalance.amountNet < 0 && !isEditingSettlement && !isArchived && (
                 <Button
                   type='button'
                   className='min-h-11 w-full'
@@ -217,20 +220,20 @@ export default function ExpenseBalanceAction({
                 </Button>
               )}
 
-              {(isCreatingSettlement || editingSettlement) && (currentBalance.amountNet < 0 || editingSettlement) && (
+              {!isArchived && (isCreatingSettlement || isEditingSettlement) && (currentBalance.amountNet < 0 || isEditingSettlement) && (
                 <ExpenseSettlementManager
-                  key={editingSettlement?.id ?? 'new-settlement'}
+                  key={isEditingSettlement ? editingSettlement?.id ?? 'new-settlement' : 'new-settlement'}
                   expenseId={expenseId}
                   members={members}
                   balances={balances}
                   currency={currency}
                   currentUserId={currentMember.id}
-                  initialSettlement={editingSettlement}
+                  initialSettlement={isEditingSettlement ? editingSettlement : undefined}
                   onCreated={() => {
                     setIsCreatingSettlement(false)
                     retryBalances()
                     onSettled()
-                    if (editingSettlement) {
+                    if (isEditingSettlement) {
                       setIsOpen(false)
                       onEditComplete()
                     }

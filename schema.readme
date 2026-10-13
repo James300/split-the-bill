@@ -22,6 +22,10 @@ expense_user_read_state - This stores each expense member's last-read timestamp;
 cascades to the corresponding read state. Migration 0004 initializes existing memberships as read
 through the migration time.
 
+`expense.archived_at` records when an expense was permanently archived. A null value means the
+expense is active; archived expenses remain readable but reject changes to expense, membership,
+invitation, payment, and settlement data.
+
 Payments and settlements have optional date-only activity dates. When unset, the UI and feed use
 the item's creation date. The combined feed sorts by this effective date and then by descending
 item ID. Migration 0006 also stores this activity position in each member's read cursor.
@@ -34,8 +38,8 @@ their source table and are excluded from balances.
 The application-managed PostgreSQL schema is created by the ordered SQL migrations in
 `./lib/db/migrations`. The initial snapshot (`0000_initial_schema.sql`) includes the current
 expense, payment, allocation, settlement, membership, legacy user, and invitation tables and
-columns. The later migrations are retained as additive changes for databases that applied them
-before the baseline was introduced.
+columns. Later migrations are retained as additive changes for databases that applied them before
+the baseline was introduced; migration 0007 adds `expense.archived_at`.
 
 Create a migration with a lowercase snake_case description:
 

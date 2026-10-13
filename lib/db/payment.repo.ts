@@ -1,5 +1,6 @@
 import { pool } from '@/lib/db'
 import { BadRequestError, NotFoundError } from '@/lib/errors/domain'
+import { assertExpenseWritable } from '@/lib/db/expense.repo'
 import type { PoolClient } from '@neondatabase/serverless'
 import {
   Payment,
@@ -146,11 +147,7 @@ export async function updatePaymentInDatabase(
       return null
     }
     const payment = existing.rows[0]
-    const expense = await client.query(
-      `SELECT id FROM expense WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`,
-      [payment.expense_id],
-    )
-    if (expense.rowCount === 0) throw new NotFoundError()
+    await assertExpenseWritable(client, actorUserId, payment.expense_id)
 
     const locked = await client.query<Payment>(
       `SELECT id, expense_id, paid_by_user_id, amount, description, date, created_at, updated_at, deleted_at, created_by_user_id
@@ -253,11 +250,7 @@ export async function deletePaymentFromDatabase(id: number, actorUserId: string)
       await client.query('COMMIT')
       return false
     }
-    const expense = await client.query(
-      `SELECT id FROM expense WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`,
-      [payment.expense_id],
-    )
-    if (expense.rowCount === 0) throw new NotFoundError()
+    await assertExpenseWritable(client, actorUserId, payment.expense_id)
 
     const locked = await client.query<Payment>(
       `SELECT id, expense_id, paid_by_user_id, amount, description, date, created_at, updated_at, deleted_at, created_by_user_id

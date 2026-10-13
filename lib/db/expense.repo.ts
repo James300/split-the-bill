@@ -31,6 +31,25 @@ export async function userHasExpenseAccess(
   return Boolean(result.rows[0]?.exists)
 }
 
+export async function assertExpenseWritable(
+  client: Pick<PoolClient, 'query'>,
+  userId: string,
+  expenseId: number,
+): Promise<void> {
+  const result = await client.query<{ archived_at: Date | null }>(
+    `SELECT e.archived_at
+     FROM expense e
+     JOIN user_expense ue ON ue.expense_id = e.id AND ue.user_id::text = $2
+     WHERE e.id = $1 AND e.deleted_at IS NULL
+     FOR UPDATE OF e`,
+    [expenseId, userId],
+  )
+  if (!result.rows[0]) throw new NotFoundError()
+  if (result.rows[0].archived_at) {
+    throw new BadRequestError('This expense is archived and cannot be changed.')
+  }
+}
+
 export async function createExpenseInDatabase(
   userId: string,
   expense: ExpenseCreateInput,
@@ -100,6 +119,7 @@ async function getExpenseRowById(
       e.created_at,
       e.updated_at,
       e.deleted_at,
+      e.archived_at,
       ${creatorColumn},
       COALESCE(
         (SELECT array_agg(ue2.user_id ORDER BY ue2.user_id)
@@ -137,6 +157,10 @@ export async function getExpenseFromDatabaseById(
         e.created_at,
         e.updated_at,
         e.deleted_at,
+        e.archived_at,
+        ${await hasExpenseCreatorColumn(client)
+          ? 'e.created_by_user_id'
+          : 'NULL::text AS created_by_user_id'},
         COALESCE(
           (SELECT array_agg(ue2.user_id ORDER BY ue2.user_id)
            FROM user_expense ue2
@@ -162,6 +186,7 @@ export async function getExpenseFromDatabaseById(
 
 export async function getExpensesFromDatabaseByUserId(
   userId: string,
+  includeArchived = false,
 ): Promise<Expense[]> {
   const client = await pool.connect()
 
@@ -176,6 +201,10 @@ export async function getExpensesFromDatabaseByUserId(
         e.created_at,
         e.updated_at,
         e.deleted_at,
+        e.archived_at,
+        ${await hasExpenseCreatorColumn(client)
+          ? 'e.created_by_user_id'
+          : 'NULL::text AS created_by_user_id'},
         COALESCE(
           (SELECT array_agg(ue2.user_id ORDER BY ue2.user_id)
            FROM user_expense ue2
@@ -185,10 +214,11 @@ export async function getExpensesFromDatabaseByUserId(
       FROM expense e
       JOIN user_expense ue ON e.id = ue.expense_id
       WHERE ue.user_id = $1 AND e.deleted_at IS NULL
-      ORDER BY e.updated_at DESC
+        AND ($2::boolean OR e.archived_at IS NULL)
+      ORDER BY (e.archived_at IS NOT NULL), e.updated_at DESC
       LIMIT 100;
       `,
-      [userId],
+      [userId, includeArchived],
     )
 
     return result.rows
@@ -215,6 +245,10 @@ export async function getExpensesFromDatabaseByUserIdSince(
         e.created_at,
         e.updated_at,
         e.deleted_at,
+        e.archived_at,
+        ${await hasExpenseCreatorColumn(client)
+          ? 'e.created_by_user_id'
+          : 'NULL::text AS created_by_user_id'},
         COALESCE(
           (SELECT array_agg(ue2.user_id ORDER BY ue2.user_id)
            FROM user_expense ue2
@@ -244,10 +278,8 @@ export async function updateExpenseInDatabase(
   const client = await pool.connect()
 
   try {
-    const access = await userHasExpenseAccess(userId, expenseId)
-    if (!access) {
-      throw new NotFoundError()
-    }
+    await client.query('BEGIN')
+    await assertExpenseWritable(client, userId, expenseId)
 
     const fields: string[] = []
     const values: unknown[] = []
@@ -267,6 +299,7 @@ export async function updateExpenseInDatabase(
     }
 
     if (fields.length === 0) {
+      await client.query('COMMIT')
       return getExpenseFromDatabaseById(userId, expenseId)
     }
 
@@ -281,7 +314,11 @@ export async function updateExpenseInDatabase(
       values,
     )
 
+    await client.query('COMMIT')
     return getExpenseFromDatabaseById(userId, expenseId)
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
   } finally {
     client.release()
   }
@@ -294,15 +331,14 @@ export async function deleteExpenseFromDatabase(
   const client = await pool.connect()
 
   try {
-    const access = await client.query(
-      `SELECT 1 FROM user_expense WHERE user_id = $1 AND expense_id = $2`,
-      [userId, expenseId],
-    )
-    if (access.rowCount === 0) {
-      throw new NotFoundError()
-    }
+    await client.query('BEGIN')
+    await assertExpenseWritable(client, userId, expenseId)
 
     await client.query(`UPDATE expense SET deleted_at = NOW() WHERE id = $1`, [expenseId])
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
   } finally {
     client.release()
   }
@@ -317,13 +353,7 @@ export async function addUserToExpenseInDatabase(
 
   try {
     await client.query('BEGIN')
-    const access = await client.query(
-      `SELECT 1 FROM user_expense WHERE user_id = $1 AND expense_id = $2`,
-      [requesterId, expenseId],
-    )
-    if (access.rowCount === 0) {
-      throw new NotFoundError()
-    }
+    await assertExpenseWritable(client, requesterId, expenseId)
 
     await client.query(
       `INSERT INTO user_expense (user_id, expense_id)
@@ -350,6 +380,7 @@ export async function removeUserFromExpenseInDatabase(
 
   try {
     await client.query('BEGIN')
+    await assertExpenseWritable(client, requesterId, expenseId)
 
     if (!(await hasExpenseCreatorColumn(client))) {
       throw new NotFoundError()
@@ -415,6 +446,42 @@ export interface ExpenseMemberRow {
   isCreator: boolean
   isCurrentUser: boolean
   canBeRemoved: boolean
+}
+
+export async function archiveExpenseInDatabase(
+  userId: string,
+  expenseId: number,
+): Promise<Expense> {
+  const client = await pool.connect()
+
+  try {
+    await client.query('BEGIN')
+    const result = await client.query<{ created_by_user_id: string | null }>(
+      `SELECT created_by_user_id
+       FROM expense e
+       JOIN user_expense ue ON ue.expense_id = e.id AND ue.user_id::text = $2
+       WHERE e.id = $1 AND e.deleted_at IS NULL
+       FOR UPDATE OF e`,
+      [expenseId, userId],
+    )
+    const creatorId = result.rows[0]?.created_by_user_id
+    if (!result.rows[0]) throw new NotFoundError()
+    if (!creatorId || creatorId !== userId) {
+      throw new ForbiddenError('Only the expense creator can archive this expense.')
+    }
+    await client.query(
+      `UPDATE expense SET archived_at = NOW(), updated_at = NOW()
+       WHERE id = $1 AND archived_at IS NULL`,
+      [expenseId],
+    )
+    await client.query('COMMIT')
+    return getExpenseFromDatabaseById(userId, expenseId)
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
 }
 
 export async function getExpenseMembersFromDatabase(

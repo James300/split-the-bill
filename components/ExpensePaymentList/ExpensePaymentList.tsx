@@ -40,6 +40,7 @@ export default function ExpensePaymentList({
   onEditPayment,
   onEditSettlement,
   onActivityChanged,
+  isArchived = false,
 }: {
   expenseId: string
   refreshKey: number
@@ -47,6 +48,7 @@ export default function ExpensePaymentList({
   onEditPayment: (payment: ExpensePaymentRecord, allocations: PaymentAllocationRecord[]) => void
   onEditSettlement: (settlement: ExpenseSettlementRecord) => void
   onActivityChanged: () => void
+  isArchived?: boolean
 }) {
   const membersState = useExpenseMembers(expenseId, true, pageRefreshKey)
   const paymentsState = useExpensePayments(expenseId, refreshKey, true, pageRefreshKey)
@@ -309,7 +311,7 @@ export default function ExpensePaymentList({
                         ? `Deleted ${formatPaymentDate(activity.record.deletedAt)} · Recorded ${formatPaymentDate(activity.record.date)}`
                         : formatPaymentDate(activity.record.date)}
                     </p>
-                    {!activity.record.deletedAt && activity.record.createdByUserId === currentMember?.id && (
+                    {!isArchived && !activity.record.deletedAt && activity.record.createdByUserId === currentMember?.id && (
                       <ExpenseLedgerItemActions
                         itemType='settlement'
                         itemId={activity.record.id}
@@ -327,7 +329,7 @@ export default function ExpensePaymentList({
                   allocations={allocationsByPayment.get(activity.record.id) ?? []}
                   currency={currency}
                   isDeleted={Boolean(activity.record.deletedAt)}
-                  canEdit={activity.record.createdByUserId === currentMember?.id}
+                  canEdit={!isArchived && activity.record.createdByUserId === currentMember?.id}
                   onEdit={() => onEditPayment(activity.record, allocationsByPayment.get(activity.record.id) ?? [])}
                   onDeleted={onActivityChanged}
                 />

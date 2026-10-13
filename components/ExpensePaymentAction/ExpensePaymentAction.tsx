@@ -15,6 +15,7 @@ export default function ExpensePaymentAction({
   editingAllocations,
   onEditComplete,
   pageRefreshKey,
+  isArchived = false,
 }: {
   expenseId: string
   onCreated: () => void
@@ -22,10 +23,13 @@ export default function ExpensePaymentAction({
   editingAllocations?: PaymentAllocationRecord[]
   onEditComplete: () => void
   pageRefreshKey: number
+  isArchived?: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const isDialogOpen = isOpen || Boolean(editingPayment)
   const membersState = useExpenseMembers(expenseId, isDialogOpen, pageRefreshKey)
+
+  if (isArchived) return null
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open)

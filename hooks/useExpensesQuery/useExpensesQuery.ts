@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import { useExpense, useExpenses } from '@/store/ExpensesStore/ExpensesStore'
 import { useQuery } from '../useQuery/useQuery'
 
-function useExpenseQueryHelper() {
+function useExpenseQueryHelper(endpoint = '/api/expenses') {
   const { isLoading, isError, lastFetchedAt, setExpenses, setLoading, setError } = useExpenses()
   
   const fetchExpense = useQuery({
@@ -13,7 +13,7 @@ function useExpenseQueryHelper() {
     setLoading,
     setError,
     setData: setExpenses,
-    endpoint: '/api/expenses'
+    endpoint
   })
   
   return { fetchExpense, isLoading, isError }
@@ -31,7 +31,7 @@ export function useExpensesQuery() {
 }
 
 export function useExpenseQuery(id: string, pageRefreshKey = 0) {
-  const { fetchExpense, isLoading, isError } = useExpenseQueryHelper()
+  const { fetchExpense, isLoading, isError } = useExpenseQueryHelper('/api/expenses?includeArchived=true')
   const expense = useExpense(id)
   const lastFetchKey = useRef<string | null>(null)
 

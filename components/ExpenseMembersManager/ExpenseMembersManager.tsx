@@ -7,8 +7,10 @@ import type { useExpenseMembers } from '@/hooks/useExpenseMembers/useExpenseMemb
 
 export default function ExpenseMembersManager({
   membersState,
+  isArchived = false,
 }: {
   membersState: ReturnType<typeof useExpenseMembers>
+  isArchived?: boolean
 }) {
   const { members, canManageMembers, isLoading, removingUserId, error, removeMember } = membersState
   const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null)
@@ -37,7 +39,7 @@ export default function ExpenseMembersManager({
               </p>
               {member.isCreator && <p className='text-xs text-muted-foreground'>Expense creator</p>}
             </div>
-            {canManageMembers && member.canBeRemoved && (
+            {!isArchived && canManageMembers && member.canBeRemoved && (
               <Button
                 type='button'
                 variant='destructive'
@@ -50,7 +52,7 @@ export default function ExpenseMembersManager({
             )}
           </div>
         ))}
-        {!canManageMembers && members.length > 0 && (
+        {!isArchived && !canManageMembers && members.length > 0 && (
           <p className='text-xs text-muted-foreground'>
             {hasKnownCreator
               ? 'Only the expense creator can remove members.'

@@ -23,6 +23,8 @@ export function mapExpenseRecord(expense: Expense): IExpense {
     createdAt: expense.created_at.getTime(),
     updatedAt: expense.updated_at.getTime(),
     userIds: expense.user_ids,
+    createdByUserId: expense.created_by_user_id ?? null,
+    archivedAt: expense.archived_at?.getTime() ?? null,
   }
 }
 

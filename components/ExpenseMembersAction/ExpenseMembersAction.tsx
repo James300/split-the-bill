@@ -10,9 +10,11 @@ import { useExpenseMembers } from '@/hooks/useExpenseMembers/useExpenseMembers'
 export default function ExpenseMembersAction({
   expenseId,
   pageRefreshKey,
+  isArchived = false,
 }: {
   expenseId: string
   pageRefreshKey: number
+  isArchived?: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const membersState = useExpenseMembers(expenseId, isOpen, pageRefreshKey)
@@ -37,7 +39,7 @@ export default function ExpenseMembersAction({
         description='See who is part of this expense.'
         className='max-h-[90dvh] overflow-y-auto'
       >
-        <ExpenseMembersManager membersState={membersState} />
+        <ExpenseMembersManager membersState={membersState} isArchived={isArchived} />
       </Dialog>
     </>
   )
