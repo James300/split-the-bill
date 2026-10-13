@@ -375,7 +375,7 @@ These are acceptance tests for the planned offline phase, not current-product ex
 1. Add Playwright configuration, a disposable test database/auth setup, trace/video-on-failure, and CI-safe environment guards.
 2. Implement the `@smoke` path: sign in, create expense, create invitation, join from second account, create payment, inspect balances, record settlement.
 3. Add authorization/data isolation and exact-money/date suites before broad visual coverage.
-4. Add creator-only edit/delete, tombstones, read cursors, and failure recovery.
+4. Add member-authorized edit/delete, tombstones, read cursors, and failure recovery.
 5. Add mobile/accessibility and performance regression suites.
 6. Add realtime and offline suites only when those product phases are implemented.
 

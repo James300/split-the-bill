@@ -26,7 +26,7 @@ activity read endpoints. Expense, member, invitation, payment, and settlement ch
 | PATCH  | `/api/payments/:id`        | Update payment and all shares | PaymentUpdateInput    | `Payment`        |
 | DELETE | `/api/payments/:id`        | Soft-delete payment          | —                      | `204`            |
 
-Only the recorded creator can edit or delete a payment. Payment edits replace the full participant set atomically; independent allocation PATCH/DELETE requests are rejected. Deleted payments remain in the activity response with `deletedAt` and retained details, but do not contribute to balances.
+Any current member of an active expense can edit or delete a payment. Payment edits replace the full participant set atomically; independent allocation PATCH/DELETE requests are rejected. The item's original creator attribution is retained, and each change records the acting member in ledger history. Deleted payments remain in the activity response with `deletedAt` and retained details, but do not contribute to balances.
 
 ### Settlements
 
@@ -38,7 +38,7 @@ Only the recorded creator can edit or delete a payment. Payment edits replace th
 | PATCH  | `/api/settlements/:id`        | Update settlement               | `SettlementUpdateInput` | `Settlement`   |
 | DELETE | `/api/settlements/:id`        | Soft-delete settlement          | —                       | `204`          |
 
-Only the recorded creator can edit or delete a settlement. Deleted settlements remain visible as activity tombstones, but do not contribute to balances.
+Any current member of an active expense can edit or delete a settlement. The item's original creator attribution is retained, and each change records the acting member in ledger history. Deleted settlements remain visible as activity tombstones, but do not contribute to balances.
 
 
 ### Expense Invitations

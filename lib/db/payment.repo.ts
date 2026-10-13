@@ -153,7 +153,6 @@ export async function updatePaymentInDatabase(
       `SELECT id, expense_id, paid_by_user_id, amount, description, date, created_at, updated_at, deleted_at, created_by_user_id
        FROM payments p
        WHERE p.id = $1 AND p.deleted_at IS NULL
-         AND p.created_by_user_id = $2
          AND EXISTS (
            SELECT 1 FROM user_expense ue
            WHERE ue.expense_id = p.expense_id AND ue.user_id::text = $2
@@ -256,7 +255,6 @@ export async function deletePaymentFromDatabase(id: number, actorUserId: string)
       `SELECT id, expense_id, paid_by_user_id, amount, description, date, created_at, updated_at, deleted_at, created_by_user_id
        FROM payments p
        WHERE p.id = $1 AND p.deleted_at IS NULL
-         AND p.created_by_user_id = $2
          AND EXISTS (
            SELECT 1 FROM user_expense ue
            WHERE ue.expense_id = p.expense_id AND ue.user_id::text = $2

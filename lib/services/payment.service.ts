@@ -92,9 +92,6 @@ export async function updatePayment(
     return null
   }
   await requireExpenseMember(userId, existing.expense_id)
-  if (existing.created_by_user_id !== userId) {
-    throw new NotFoundError()
-  }
   return updatePaymentInDatabase(paymentId, userId, validationResult.data)
 }
 
@@ -107,9 +104,6 @@ export async function deletePayment(
     return false
   }
   await requireExpenseMember(userId, existing.expense_id)
-  if (existing.created_by_user_id !== userId) {
-    throw new NotFoundError()
-  }
   return deletePaymentFromDatabase(paymentId, userId)
 }
 

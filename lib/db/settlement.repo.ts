@@ -219,7 +219,6 @@ export async function updateSettlementInDatabase(
       `SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id
        FROM settlement s
        WHERE s.id = $1 AND s.deleted_at IS NULL
-         AND s.created_by_user_id = $2
          AND EXISTS (
            SELECT 1 FROM user_expense ue
            WHERE ue.expense_id = s.expense_id AND ue.user_id::text = $2
@@ -319,7 +318,6 @@ export async function deleteSettlementFromDatabase(id: number, actorUserId: stri
       `SELECT id, expense_id, payer_user_id, payee_user_id, amount, date, created_at, updated_at, deleted_at, created_by_user_id
        FROM settlement s
        WHERE s.id = $1 AND s.deleted_at IS NULL
-         AND s.created_by_user_id = $2
          AND EXISTS (
            SELECT 1 FROM user_expense ue
            WHERE ue.expense_id = s.expense_id AND ue.user_id::text = $2

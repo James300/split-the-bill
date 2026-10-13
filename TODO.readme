@@ -149,25 +149,25 @@ Plan:
 
 Done when every expense member can review repayments and reconcile them with the remaining balance.
 
-## 10. Edit and delete payments and settlements — Partial (server and UI paths implemented; migration and runtime checks pending)
+## 10. Edit and delete payments and settlements — Implemented (server and UI paths implemented; migration and runtime checks pending)
 
-Allow only the authenticated user who created a payment or settlement to edit or soft-delete it. Record the creator on each newly created ledger item; do not infer legacy creators from the payer or settlement sender. Existing rows whose creator cannot be established safely remain visible but cannot be edited or deleted. Keep deleted rows in the activity ledger as tombstones so members can see that an item was deleted and expand it to inspect its retained details. For each edit, save a full snapshot of the previous state in a separate history table before applying the new state. An edit-history browsing UI and optional deletion-reason notes are out of scope for this phase.
+Allow any authenticated member of an active expense to edit or soft-delete its payments and settlements, including legacy items whose creator is unknown. Record the creator on each newly created ledger item for attribution; do not infer legacy creators from the payer or settlement sender. Keep deleted rows in the activity ledger as tombstones so members can see that an item was deleted and expand it to inspect its retained details. For each edit, save a full snapshot of the previous state in a separate history table before applying the new state, recording the member who made the change. An edit-history browsing UI and optional deletion-reason notes are out of scope for this phase.
 
 Plan:
 
 - [x] Add migration `lib/db/migrations/0005_ledger_item_history.sql` for transaction creator IDs and complete prior-state history. Legacy creator IDs remain unknown.
 - [x] Record the authenticated creator when creating payments and settlements.
-- [x] Enforce creator-only edit/delete in server services and mutation transactions; require current expense membership and return not-found for non-creators. Independent payment-allocation mutation endpoints are rejected so edits remain atomic.
+- [x] Enforce member-only edit/delete in server services and mutation transactions; require current expense membership and keep archived expenses read-only. Independent payment-allocation mutation endpoints are rejected so edits remain atomic.
 - [x] Implement payment edits transactionally, including a previous-state snapshot and complete allocation replacement. Revalidate payer/participants and membership, split in exact minor units, and preserve the item ID and creation time.
 - [x] Implement settlement edits transactionally, snapshotting the prior state and revalidating membership, distinct payer/payee, positive amount, and outstanding amount in the edited direction.
 - [x] Make soft deletion transactional with a prior-state snapshot; deleted payments and settlements remain out of balances while retaining the details used by the ledger.
 - [x] Return deleted payment/settlement rows in the combined activity feed with a clear deleted indicator and expandable details; do not add permanent-delete or restore behavior.
-- [x] Reuse the payment and settlement dialogs for edits with edit-specific titles and save actions. Show edit/delete actions only for the recorded creator, confirm deletion in a dialog, and provide visible success/error feedback.
+- [x] Reuse the payment and settlement dialogs for edits with edit-specific titles and save actions. Show edit/delete actions to members of active expenses, confirm deletion in a dialog, and provide visible success/error feedback.
 - [x] Refresh the activity list and open balance view after successful edits/deletions; Phase 2 realtime broadcasts remain planned separately.
 - [ ] Add tests for creator/non-creator authorization, unknown legacy creators, history snapshots, atomic allocation replacement, settlement overpayment and direction changes, soft-deleted rows in ledger but not balances, and failure rollback.
 - [ ] Apply migration `0005_ledger_item_history.sql` with `npm run db:migrate` and verify migration status.
 
-Done when creators can edit or soft-delete their payments and settlements, other members see the updated or visibly deleted item, the previous state is retained for future audit UI, balances reflect only active ledger items, and no user can change another creator's ledger item. Source paths are implemented; migration application and live database verification remain outstanding.
+Done when any member of an active expense can edit or soft-delete its payments and settlements, other members see the updated or visibly deleted item, the previous state and changing member are retained for future audit UI, balances reflect only active ledger items, and non-members or members of archived expenses cannot make changes. Source paths are implemented; migration application and live database verification remain outstanding.
 
 ## Additional core work
 

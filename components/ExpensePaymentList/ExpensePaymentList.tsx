@@ -311,7 +311,7 @@ export default function ExpensePaymentList({
                         ? `Deleted ${formatPaymentDate(activity.record.deletedAt)} · Recorded ${formatPaymentDate(activity.record.date)}`
                         : formatPaymentDate(activity.record.date)}
                     </p>
-                    {!isArchived && !activity.record.deletedAt && activity.record.createdByUserId === currentMember?.id && (
+                    {!isArchived && !activity.record.deletedAt && currentMember && (
                       <ExpenseLedgerItemActions
                         itemType='settlement'
                         itemId={activity.record.id}
@@ -329,7 +329,7 @@ export default function ExpensePaymentList({
                   allocations={allocationsByPayment.get(activity.record.id) ?? []}
                   currency={currency}
                   isDeleted={Boolean(activity.record.deletedAt)}
-                  canEdit={!isArchived && activity.record.createdByUserId === currentMember?.id}
+                  canEdit={!isArchived && Boolean(currentMember)}
                   onEdit={() => onEditPayment(activity.record, allocationsByPayment.get(activity.record.id) ?? [])}
                   onDeleted={onActivityChanged}
                 />

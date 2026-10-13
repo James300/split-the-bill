@@ -7,7 +7,6 @@ import {
   updateSettlementInDatabase,
 } from '@/lib/db/settlement.repo'
 import { requireExpenseMember } from '@/lib/access/expense-member'
-import { NotFoundError } from '@/lib/errors/domain'
 import {
   Settlement,
   SettlementCreateInput,
@@ -86,9 +85,6 @@ export async function updateSettlement(
     return null
   }
   await requireExpenseMember(userId, existing.expense_id)
-  if (existing.created_by_user_id !== userId) {
-    throw new NotFoundError()
-  }
   return updateSettlementInDatabase(settlementId, userId, validationResult.data)
 }
 
@@ -101,8 +97,5 @@ export async function deleteSettlement(
     return false
   }
   await requireExpenseMember(userId, existing.expense_id)
-  if (existing.created_by_user_id !== userId) {
-    throw new NotFoundError()
-  }
   return deleteSettlementFromDatabase(settlementId, userId)
 }
