@@ -1,0 +1,367 @@
+# End-to-end test plan
+
+This catalog is a blueprint for future Playwright tests of Split the Bill. It is intentionally broader than a smoke suite: it covers expected user flows, failure recovery, access control, ledger arithmetic, responsive behavior, and browser lifecycle edge cases.
+
+The scenarios are acceptance criteria, not evidence that the behavior currently passes. The repository does not currently have Playwright configuration or E2E tests. Most core flows are implemented but runtime-unverified; realtime updates and offline access are future work. Keep those distinctions visible when converting this plan into tests.
+
+## Test conventions
+
+### Recommended suites
+
+- **PR smoke:** a short authenticated create-expense, invite, payment, balance, settlement path; run against a disposable test database and test auth project.
+- **Core regression:** all current-product cases below, sharded by feature; exclude the explicitly future realtime/offline sections until implemented.
+- **Authorization and data isolation:** run on every PR because a UI-only check cannot prove server-side isolation.
+- **Responsive and accessibility:** run a small mobile set on every PR and broader viewport/browser coverage nightly.
+- **Future feature suites:** enable only after realtime or offline functionality exists.
+
+Suggested tags: `@smoke`, `@auth`, `@expenses`, `@invitations`, `@members`, `@payments`, `@ledger`, `@balances`, `@settlements`, `@authorization`, `@accessibility`, `@mobile`, `@recovery`, `@realtime`, `@offline`.
+
+### Test environment and fixtures
+
+1. Use a dedicated Neon Auth application and disposable database. Apply all migrations before a run. Never point destructive setup or cleanup at a developer or production database.
+2. Create deterministic authenticated accounts through a supported test-auth mechanism. Prefer stable seeded accounts and Playwright `storageState` files created by a setup project. Do not commit credentials, auth cookies, invite tokens, or storage-state files.
+3. Provide at least three members: **Alice** (expense creator), **Bob**, and **Casey**. Provide **Mallory** as an authenticated non-member. Use unique run-scoped expense names, for example `e2e-${workerIndex}-${runId}`.
+4. Seed scenario-specific ledger histories through a test-only fixture API or isolated database fixture helper. Keep fixture setup outside production routes, ensure it creates valid states, and clean up by run ID. Do not use direct SQL to assert the behavior under test.
+5. For persistence assertions, navigate away and back or reload and inspect the UI/server response; a transient client-state update alone is not sufficient.
+6. Freeze browser time where practical. Set an explicit timezone (UTC for date ordering tests, plus at least one non-UTC timezone for local-date defaults). Use fixed selected dates for ledger ordering.
+7. Use whole-unit and fractional currencies, including a zero-decimal currency (for example, JPY), a two-decimal currency (for example, USD), and a three-decimal currency (for example, KWD). Verify supported currency availability against the app's currency list.
+8. Prefer Playwright role/name/label locators and visible text. Add stable `data-testid` attributes only when a control cannot be selected reliably by accessible semantics. Avoid CSS class, DOM-depth, or generated Radix ID selectors.
+9. Disable or wait out animations only in test configuration. Use `expect.poll` or UI state assertions for async transitions; avoid fixed sleeps.
+10. Capture console errors, uncaught page errors, failed same-origin requests, and server errors. Allowlist expected network failures only in the specific recovery test that induces them.
+11. Test both narrow phone (e.g. 390x844) and desktop (e.g. 1440x900). The primary journey should also run in a mobile browser project with touch enabled.
+12. For clipboard and network failures, use Playwright permissions and route interception where supported. Do not assume browser permission prompts are identical across engines.
+
+### General assertions
+
+- Every dialog can be opened and dismissed with its close control and Escape where supported; verify outside-click behavior matches the intended dialog contract. Focus enters dialog content, not the close button; closing returns focus to the opener.
+- Loading, empty, validation, success, and failure states are distinguishable and announced where appropriate. A failed write must not look successful or discard recoverable user input.
+- Money is displayed with the expense currency and correct precision; balances use integer minor-unit values and never show floating-point artifacts.
+- Dates are date-only, never include a time, and follow selected-date / creation-date fallback rules.
+- Accessible controls have meaningful names, labels, keyboard operation, visible focus, touch-sized primary actions, and readable light/dark theme contrast.
+- Each test that mutates data verifies both the immediate UI and persisted state after a refresh, unless it is explicitly testing a failed request.
+
+## A. Authentication and account lifecycle
+
+1. **A-001 @smoke @auth — Sign up with valid credentials.** Open sign-up, enter a valid name/email/password, submit, and verify authenticated navigation to the expenses list. Verify the account can load authenticated application data.
+2. **A-002 @auth — Sign in with an existing account.** Sign out, sign in, and verify the account returns to the signed-in expenses list with its own expenses.
+3. **A-003 @auth — Duplicate email.** Attempt registration using an existing email; verify a visible error, no false success navigation, and no duplicate account.
+4. **A-004 @auth — Invalid email and missing required values.** Submit malformed or missing fields; verify browser/schema validation prevents the write and identifies the relevant field.
+5. **A-005 @auth — Weak password.** Submit a password rejected by auth policy; verify clear feedback and that the user can correct it without losing other input.
+6. **A-006 @auth — Provider/auth service error.** Force a controlled auth failure; verify an error appears and no authenticated-only page is shown.
+7. **A-007 @auth — Password visibility control.** Toggle show/hide; verify input type changes without changing the entered value and the accessible name reflects the action.
+8. **A-008 @auth — Google OAuth success.** Complete the configured test-provider flow; verify callback handling, authenticated state, and expenses list navigation.
+9. **A-009 @auth — Google OAuth cancellation/failure.** Cancel or force provider failure; verify a recoverable error/return path without a blank or success-shaped page.
+10. **A-010 @auth — Session survives page reload.** Reload an authenticated page; verify session remains valid and private data loads.
+11. **A-011 @auth — Sign out.** Sign out from the account UI; verify return to public/auth page and that browser back/reload cannot reveal private expense content.
+12. **A-012 @authorization — Unauthenticated deep link.** Visit an expense URL directly while signed out; verify redirect/auth handling and no expense name, member, payment, balance, or settlement data leaks.
+13. **A-013 @auth @invitations — Safe invite return URL.** Open sign-in/sign-up through a valid invite URL; verify successful auth returns to that invite, not the home page.
+14. **A-014 @authorization — Reject unsafe return URL.** Supply an external or malformed `returnTo`; verify it cannot redirect off-site or to an arbitrary route.
+
+## B. Expenses list and create-expense dialog
+
+1. **B-001 @smoke @expenses — Empty list.** Sign in as a new user; verify helpful empty state and one accessible add-expense icon action in the title row.
+2. **B-002 @expenses — Open and close create dialog.** Open from title-row action; verify dialog title/content, focus placement, close button, Escape, and return focus.
+3. **B-003 @expenses — Create expense.** Enter a unique name and currency; save; verify dialog closes, list refreshes, new expense card appears, and creator is its first member.
+4. **B-004 @expenses — Required name.** Submit blank name; verify no request or persisted row and clear field feedback.
+5. **B-005 @expenses — Whitespace-only name.** Submit whitespace; verify it is rejected or normalized according to schema, never stored as an empty-looking expense.
+6. **B-006 @expenses — Name bounds.** Test minimum, maximum, and over-maximum lengths; verify valid boundary values save and invalid values receive validation feedback.
+7. **B-007 @expenses — Invalid/missing currency.** Attempt submission without a selection or with a tampered currency; verify client/server rejection.
+8. **B-008 @expenses — Currency selection.** Search, select, and keyboard-navigate the currency combobox; verify selected currency is visible and persists to created expense.
+9. **B-009 @expenses — Save in progress.** Delay the create response; verify duplicate submit is prevented and progress is communicated.
+10. **B-010 @recovery — Create request failure.** Force a server/network failure; verify dialog stays open, values remain, error is visible, and retry can succeed.
+11. **B-011 @expenses — Atomic creator membership.** Force membership creation/database failure; verify no orphan expense remains and retry does not create duplicates.
+12. **B-012 @expenses — List membership scope.** Create/join separate expenses for Alice and Bob; verify each list shows exactly expenses the signed-in user belongs to.
+13. **B-013 @expenses — List sort and return refresh.** Update one expense through activity; navigate to list and back; verify current order and data are fetched.
+14. **B-014 @expenses — List loading/error state.** Delay/fail list load; verify loading indication then a visible retry/recovery path, not an empty-state misrepresentation.
+15. **B-015 @expenses @mobile — Responsive list.** At phone width, verify cards, title action, names, and currency remain legible without horizontal overflow.
+
+## C. Expense access, members, and membership history
+
+1. **C-001 @smoke @members — Open member dialog.** Open people action; verify current members' display names, creator identity, and current-user identity.
+2. **C-002 @members — Member loading refresh.** Delay member refresh after initial data; verify already-loaded rows stay visible and newly loaded rows appear when complete.
+3. **C-003 @members — Current-user identification.** As Alice, Bob, and Casey in turn, verify “you” designation follows the authenticated user.
+4. **C-004 @members — Creator removal control.** As recorded creator Alice, verify remove controls exist only for eligible non-creator members.
+5. **C-005 @members — Non-creator cannot remove.** As Bob, verify no removal UI; directly call the removal endpoint and verify not-found/denial without changing membership.
+6. **C-006 @members — Creator cannot remove self.** Verify creator removal control is absent and tampered request is rejected.
+7. **C-007 @members — Existing expense with unknown creator.** Seed legacy expense without `created_by_user_id`; verify no removal controls are offered.
+8. **C-008 @members — Remove eligible member.** Creator removes a member with no ledger history; verify confirmation/feedback, list refresh, removed member no longer appears, and that member loses access.
+9. **C-009 @members — Removal blocked by payment payer history.** Give target member an active payment; verify removal is unavailable or rejected and ledger is unchanged.
+10. **C-010 @members — Removal blocked by allocation history.** Give target member an active payment allocation while they did not pay; verify removal is rejected.
+11. **C-011 @members — Removal blocked by settlement history.** Give target member active settlement history; verify removal is rejected.
+12. **C-012 @members — Deleted history and removal.** Seed only soft-deleted history for target member; verify behavior follows server policy and never silently erases tombstones.
+13. **C-013 @members — Removed user data isolation.** After a permitted removal, try expense, members, payments, allocations, settlements, balance, read-state, and invitation endpoints as removed user; verify inaccessible expense responses do not reveal existence/data.
+14. **C-014 @members @recovery — Removal failure.** Force server failure; verify membership remains, an error is visible, and retry is possible.
+15. **C-015 @authorization — Cross-expense ID substitution.** As a member of Expense A but not B, replace B's ID in URLs/API calls; verify no data or mutations for B.
+16. **C-016 @members — Display-name privacy.** Verify member lists expose only the identity fields needed to identify a member, not private account fields or unrelated profile data.
+
+## D. Invitation creation, preview, revocation, and join
+
+1. **D-001 @smoke @invitations — Create invite link.** As a member, open share dialog and create a link; verify expiry is seven days, link is visible/selectable, and exactly one success notification is shown.
+2. **D-002 @invitations — Clipboard success.** Grant clipboard permission; create link; verify clipboard contains the displayed URL and the UI does not show separate copy/native-share buttons.
+3. **D-003 @recovery @invitations — Clipboard failure.** Deny/fail clipboard; verify link stays selectable, copy failure is clear, and manual copying remains possible.
+4. **D-004 @invitations — Dialog close/reopen retains URL.** Create a link, close dialog, reopen; verify same URL remains in current page memory.
+5. **D-005 @invitations — Reload does not restore secret URL.** Create link then reload; verify client does not recover/persist the plaintext invitation token URL.
+6. **D-006 @invitations — Replacement revokes prior link.** Create invite A then replacement B; verify B is shown and A's URL now displays unavailable when visited.
+7. **D-007 @invitations — Member revokes active link.** Revoke current invitation; verify one toast, manager changes to no-active-link state, and old link fails.
+8. **D-008 @invitations — Shared toast identity.** Repeated create/revoke actions never stack multiple invitation feedback toasts; latest action feedback is clear.
+9. **D-009 @authorization — Non-member cannot create/revoke.** Call both endpoints as Mallory; verify no link is created or revoked and response does not expose expense existence.
+10. **D-010 @authorization — Non-member expense members cannot manage link.** Verify controls hidden and endpoints denied for non-members.
+11. **D-011 @invitations — Public preview contents.** Open valid invite while signed out; verify expense name and current member names only; assert no payment amount, payer, allocation, settlement, balance, or creator-private data is in UI or relevant response payload.
+12. **D-012 @invitations — Invalid token.** Visit malformed/random token; verify unavailable message and no private data.
+13. **D-013 @invitations — Expired token.** Seed expired invite; verify unavailable state and no join action.
+14. **D-014 @invitations — Revoked token.** Visit revoked invite; verify unavailable state.
+15. **D-015 @invitations — Join as authenticated recipient.** As Mallory, open valid invite and join; verify navigation to expense, member list includes Mallory, and expense appears in list.
+16. **D-016 @invitations — Join idempotently.** Submit join twice/follow same link again; verify one membership row and no duplicate side effects.
+17. **D-017 @invitations — Already-member invite.** Open as Alice; verify “open expense” path rather than duplicate join.
+18. **D-018 @invitations — Sign in then resume invite.** As signed-out recipient, choose sign in, authenticate, return to invite, join; verify original token/return path works.
+19. **D-019 @invitations — Sign up then resume invite.** Repeat with new account and verify user can join after registration.
+20. **D-020 @invitations — Creator/member reuse.** Multiple distinct accounts join one reusable link within seven days; verify each becomes a member and link remains usable.
+21. **D-021 @invitations — Revoke during pending join.** Revoke token before join request is accepted; verify join fails and no membership is created.
+22. **D-022 @recovery @invitations — Join request network failure.** Force connection failure; verify clear retry message, no success navigation, and subsequent retry joins once.
+23. **D-023 @invitations — Token privacy.** Verify token is not stored in localStorage, IndexedDB, or persistent app state; server storage contains only a cryptographic hash.
+24. **D-024 @invitations — Referrer and indexing protections.** Verify invite page sets no-referrer behavior and no-index metadata; opening outbound links does not leak token through referrer.
+25. **D-025 @invitations @mobile — Invitation usability.** On phone, preview, member list, join/sign-in controls, and link field are readable and touch-operable.
+
+## E. Payment create form, validation, and exact split
+
+1. **E-001 @smoke @payments — Create even payment.** As Alice, add a described payment in USD shared by Alice/Bob; verify row, payer, participants, allocations, currency, balance change, and success feedback.
+2. **E-002 @payments — Defaults.** Open new payment form; verify payer is current user, date is local today, and all current members are selected by default.
+3. **E-003 @payments — Change payer.** Select another member as payer; save and verify ledger and balances attribute payment to that member.
+4. **E-004 @payments — Select subset.** In a three-member expense select only Alice and Casey; verify Bob has no allocation and totals still equal payment total.
+5. **E-005 @payments — One participant.** Allocate entire payment to one selected member, including the payer; verify one share equals total.
+6. **E-006 @payments — Participant toggles and preview.** Toggle members on/off; verify preview updates immediately and accurately before save.
+7. **E-007 @payments — Odd minor-unit split.** Split a value not divisible by member count (e.g. $10.00 among 3); verify stable ascending user-ID order receives remainder cents and exact sum.
+8. **E-008 @payments — Smallest representable amount.** Split one minor unit among one person (valid) and among multiple people (must show too-small error/no save).
+9. **E-009 @payments — Zero-decimal currency.** Create/split JPY amount; verify no decimal placeholder/display and exact whole-unit distribution.
+10. **E-010 @payments — Three-decimal currency.** Create/split KWD amount; verify thousandth-unit precision, formatting, and remainder allocation.
+11. **E-011 @payments — Excess decimal places.** Enter amount with precision exceeding currency; verify field-level error and no request/persisted row.
+12. **E-012 @payments — Invalid amount strings.** Test blank, zero, negative, alphabetic, exponent notation, leading/trailing whitespace, too-large value, and malformed decimals; verify valid policy and server validation agree.
+13. **E-013 @payments — Description required.** Submit empty/whitespace description; verify no save and clear validation.
+14. **E-014 @payments — Description length.** Test max and over-max description lengths; verify boundary acceptance and no silent truncation of invalid content.
+15. **E-015 @payments — At least one participant.** Deselect all participants; verify submit disabled/rejected and no payment exists.
+16. **E-016 @payments — Date defaults locally.** Under a non-UTC timezone around a UTC date boundary, verify default date is the current local date.
+17. **E-017 @payments — Select and clear date.** Choose earlier date, save, and verify it persists; clear date and verify creation date is displayed/used for order.
+18. **E-018 @payments — Calendar affordance.** Click date field and calendar icon; verify picker opens where browser supports it, icon remains visible in light and dark themes.
+19. **E-019 @payments — Forged payer/participant.** Tamper request to use non-member payer or allocation participant; verify server rejects and creates neither payment nor allocation.
+20. **E-020 @payments — Duplicate allocation.** Submit duplicate participant IDs through API; verify server rejects duplicates.
+21. **E-021 @payments — Non-positive allocations.** Submit zero/negative allocation or empty allocation list; verify server rejects.
+22. **E-022 @payments — Allocation sum mismatch.** Tamper amount/allocation totals; verify request is rejected and no partial record remains.
+23. **E-023 @authorization — Create payment as non-member.** POST valid-looking data as Mallory; verify inaccessible response and no payment/allocation rows.
+24. **E-024 @payments — Atomic create rollback.** Cause allocation insert failure after attempted payment insert; verify transaction rolls back the entire payment.
+25. **E-025 @recovery @payments — Network/server failure.** Force failed create; verify entered values and split selection remain, visible error appears, and retry creates exactly one payment.
+26. **E-026 @payments — Duplicate submit.** Delay response and click submit repeatedly; verify one transaction is created.
+27. **E-027 @payments — Success updates loaded views.** After create, verify activity, balance, total spending, and allocated share breakdown refresh without closing/reopening expense page.
+28. **E-028 @payments — Reopen dialog data retention.** Close and reopen payment dialog without successful write; verify page data remains loaded and no unnecessary refetch occurs.
+29. **E-029 @payments @mobile — Long member/description content.** Verify controls and shares remain usable with long names and item descriptions at phone width.
+30. **E-030 @payments @accessibility — Keyboard-only split form.** Operate payer, date, participant toggles, amount, and submit without a pointer; verify focus order and visible focus.
+
+## F. Payment/settlement activity ledger
+
+1. **F-001 @ledger — Newest-first selected-date order.** Seed mixed payments/settlements with dates; verify effective selected date descending and item ID descending for same date.
+2. **F-002 @ledger — Creation-date fallback order.** Include null selected dates; verify creation date determines display/order.
+3. **F-003 @ledger — Same-day payment and settlement ties.** Seed multiple same-date activities; verify descending item ID tie-break according to feed rule.
+4. **F-004 @ledger — Date-only rendering.** Verify each payment and settlement shows date without time/timezone text.
+5. **F-005 @ledger — Payment summary collapsed by default.** Verify description, total/currency, payer, participants, date and border are visible; shares, details, and creator actions are initially collapsed.
+6. **F-006 @ledger — Expand/collapse payment.** Expand and collapse; verify allocations/shares and permitted actions appear and are hidden again.
+7. **F-007 @ledger — Settlement display.** Verify payer, payee, amount/currency, date, and green settlement border; no irrelevant expand control.
+8. **F-008 @ledger — Credit/debt border.** Seed payments that respectively put current user in credit/debt; verify blue and red border semantics in light and dark themes.
+9. **F-009 @ledger — Empty expense.** Verify helpful empty ledger state and primary actions remain available.
+10. **F-010 @ledger — Loading and retry.** Delay/fail activity load; verify loading placeholder, visible error and retry, then successful reload.
+11. **F-011 @ledger — Unread line for new payment.** As Bob, create a payment as Alice after Bob's cursor; verify pink-toned unread line at top and count/state.
+12. **F-012 @ledger — Unread line for settlement.** Create a settlement after Bob's cursor; verify it counts as unread activity.
+13. **F-013 @ledger — Cursor advances only when boundary visible.** Keep boundary outside viewport; verify no read-state update. Scroll it into view; verify it persists through newest currently loaded item only.
+14. **F-014 @ledger — Page-visit boundary stays stable.** Cause cursor write while remaining on page; verify visible read boundary does not jump during current visit.
+15. **F-015 @ledger — Return recalculates boundary.** Leave and return after marking read; verify updated already-read boundary and count.
+16. **F-016 @ledger — No prior read cursor.** Seed member with no activity read; verify boundary placement follows unread-all rule and only advances when visible.
+17. **F-017 @ledger — New activity after mark-read.** Advance read cursor, add a later payment/settlement; verify new activity remains unread and cursor is not advanced past it.
+18. **F-018 @ledger — Only current member's cursor advances.** Alice reaches boundary; verify Bob's independent read state remains unchanged.
+19. **F-019 @ledger — Concurrent cursor update.** Two tabs view same expense; verify cursor never moves backward and only advances through loaded activity.
+20. **F-020 @ledger — Tombstone payment.** Soft-delete payment; verify deleted item remains in feed with clear deleted indicator and expandable retained details, but excluded from active balance and share totals.
+21. **F-021 @ledger — Tombstone settlement.** Soft-delete settlement; verify tombstone remains visible but settlement no longer changes balance.
+22. **F-022 @ledger — Tombstone ordering.** Verify deleted items remain at their effective date/item-ID position.
+23. **F-023 @ledger — Fully settled boundary.** Seed ledger that nets all members to zero after a settlement; verify latest clearing settlement appears, boundary says “All paid,” and older history is hidden initially.
+24. **F-024 @ledger — Show/hide settled history.** Toggle older history; verify prior activity appears below boundary, then can be hidden without changing ledger/read cursor.
+25. **F-025 @ledger — Settlement followed by new charge.** Add activity after fully-settled point; verify “All paid” cutoff is no longer incorrectly hiding the new outstanding activity.
+26. **F-026 @ledger — Loading partial data.** Delay one of payments/settlements; verify available loaded items do not render as a false empty ledger and eventual combined order is correct.
+27. **F-027 @ledger @authorization — Feed data isolation.** Non-member and removed member cannot read ledger or read cursor by direct route/API.
+28. **F-028 @ledger @mobile — Long ledger usability.** Verify scrolling, sticky/header interactions if present, controls, unread line, and dialogs do not cause horizontal overflow.
+
+## G. Balances and allocations
+
+1. **G-001 @smoke @balances — Two-person balance.** Seed Alice pays $30 allocated equally to Alice/Bob; verify Alice is owed $15 and Bob owes $15, expressed in clear person-to-person direction.
+2. **G-002 @balances — Payer not participant.** Alice pays a cost shared by Bob and Casey; verify Alice is creditor and allocations do not include her.
+3. **G-003 @balances — Multiple payers/items.** Seed multiple payments with different payers and participant subsets; verify net calculation for each participant.
+4. **G-004 @balances — Partial settlement.** Seed debt and partial settlement; verify only the remaining amount is outstanding.
+5. **G-005 @balances — Fully settled.** Verify every member nets to zero after sufficient settlement.
+6. **G-006 @balances — Deleted payment excluded.** Soft-delete payment; verify its total and allocations no longer affect balances or active spend/share totals.
+7. **G-007 @balances — Deleted settlement excluded.** Soft-delete settlement; verify prior outstanding direction/amount is restored.
+8. **G-008 @balances — Currency and precision.** Repeat balance assertions in zero-, two-, and three-decimal currencies; verify integer-unit exactness and formatting.
+9. **G-009 @balances — Balance dialog content.** Open money action; verify each other member appears with direction or clear no-transfer state, total active spending, and each member's total allocated share.
+10. **G-010 @balances — Overall net for group.** In expense with more than two members, verify current user's overall net is shown and reconciles to pairwise suggested amounts.
+11. **G-011 @balances — No overall net for two-member group.** Verify two-member UI does not show unnecessary group-only aggregate text.
+12. **G-012 @balances — Reopen does not refetch.** Close and reopen dialog during same page visit; verify cached page data is reused.
+13. **G-013 @balances — Freshness on page entry.** Change ledger in another session, navigate away and return; verify fresh balance appears.
+14. **G-014 @balances — Calculation avoids floating point.** Use cent/thousandth splits that create remainders; verify all amounts sum and no rounding drift is visible.
+15. **G-015 @balances @authorization — Balance endpoint authorization.** As Mallory/removed member, request balance endpoint; verify not-found-style response with no data leak.
+16. **G-016 @balances @recovery — Balance loading failure.** Force balance request failure; verify error and retry; do not render a zero balance as if authoritative.
+
+## H. Settlement form, validation, and updates
+
+1. **H-001 @smoke @settlements — Default settlement form.** As debtor with one counterparty, open settlement from balance dialog; verify payer=current user, payee=only other member, amount=full outstanding, date=local today, and default label “Settling outstanding amount owed.”
+2. **H-002 @settlements — Partial settlement preview.** Enter a valid partial amount; verify remaining owed preview uses exact currency minor units.
+3. **H-003 @settlements — Change payer and payee.** Select valid alternate parties; verify available amount and preview recalculate for that direction.
+4. **H-004 @settlements — No settlement when current user is creditor.** Verify the user is not offered the debtor settlement flow when they owe nothing.
+5. **H-005 @settlements — Default date, select, clear.** Verify local-today default, selected date persistence, and creation-date fallback if cleared.
+6. **H-006 @settlements — Positive amount validation.** Test zero, negative, blank, malformed, overprecision, and valid minimum amount.
+7. **H-007 @settlements — Reject overpayment in UI.** Enter more than available outstanding amount; verify exact maximum in error and submission blocked.
+8. **H-008 @settlements — Reject overpayment on server.** Tamper request amount beyond current debt; verify rejected and no settlement saved.
+9. **H-009 @settlements — Party must differ.** Attempt same payer/payee via UI and tampered request; verify impossible/rejected.
+10. **H-010 @settlements — Both parties must be members.** Tamper payer or payee to non-member; verify rejection.
+11. **H-011 @settlements — Outstanding direction enforced.** Attempt settlement in direction with no debt or opposite to current balance; verify rejection.
+12. **H-012 @settlements — Current server state wins.** Change balances in second session after form opens; submit stale amount; verify server revalidation rejects or adjusts without corrupting balance.
+13. **H-013 @settlements — Save changes feedback.** Record settlement; verify dialog/list/balance update, new ledger entry has green border, and payment allocations remain unchanged.
+14. **H-014 @settlements — Duplicate submit.** Delay settlement response and submit repeatedly; verify a single settlement exists.
+15. **H-015 @recovery @settlements — Request failure.** Force network/server failure; verify form values stay, error is visible, balance/activity remain authoritative, retry creates one settlement.
+16. **H-016 @settlements — Multiple sequential partial settlements.** Record several partial repayments; verify amount left updates after each and no extra settlement can exceed remainder.
+17. **H-017 @settlements — Settlement form edit context.** Open edit for own settlement; verify edit title, original values, and save action rather than create defaults.
+18. **H-018 @settlements @mobile — Touch/date UI.** Verify payer/payee controls, numeric entry, date picker and submit are reachable without horizontal scrolling on phone.
+
+## I. Edit/delete payment and settlement permissions and history
+
+1. **I-001 @payments — Creator can edit own payment.** Edit description, date, amount, payer and participants; verify one current item remains with same identity/creation time and new shares/balances are correct.
+2. **I-002 @payments — Non-creator cannot edit payment.** As another member, verify action is absent and direct API request is denied without mutation.
+3. **I-003 @payments — Unknown legacy creator cannot edit.** Verify no edit action for legacy row with null creator and endpoint denies tampered update.
+4. **I-004 @payments — Edit revalidates amount and allocations.** Attempt zero/invalid amount, no participants, over-precision, and invalid member; verify UI/server validation.
+5. **I-005 @payments — Edit allocation update is atomic.** Force allocation replacement failure; verify original payment/allocation set remains intact and no partial new set is stored.
+6. **I-006 @payments — Edit snapshots previous state.** After successful edit, verify prior payment row and complete prior allocations are snapshotted once; no history browsing UI is exposed.
+7. **I-007 @payments — Delete confirmation cancel.** Open delete confirmation and cancel; verify ledger and balances unchanged.
+8. **I-008 @payments — Creator deletes own payment.** Confirm; verify soft-deleted tombstone, retained details, excluded active balances, updated UI, and one prior-state history snapshot.
+9. **I-009 @payments — Non-creator cannot delete.** Verify hidden UI and denied direct API request.
+10. **I-010 @payments — Unknown legacy creator cannot delete.** Verify controls absent and server denies.
+11. **I-011 @settlements — Creator edits own settlement.** Change parties/date/amount validly; verify new balances/ledger and one previous-state snapshot.
+12. **I-012 @settlements — Creator cannot edit to invalid direction.** Make direction/amount exceed current outstanding; verify rejected and original settlement remains.
+13. **I-013 @settlements — Non-creator cannot edit/delete.** Verify hidden UI and denied requests with no side effects.
+14. **I-014 @settlements — Unknown legacy creator actions hidden.** Verify no actions for creator-null historical settlement.
+15. **I-015 @settlements — Delete restores outstanding debt.** Delete own settlement; verify tombstone retained and prior debt restored.
+16. **I-016 @ledger — Payment creator actions only when expanded.** Verify creator actions appear inside expanded payment card, not collapsed summary.
+17. **I-017 @ledger — Settlement actions visible without expand.** Verify settlement creator actions appear directly as settlement has no expandable details.
+18. **I-018 @authorization — Creator must remain member.** Remove creator membership through controlled fixture/state, then attempt edit/delete; verify server denies.
+19. **I-019 @history — Concurrent edit/delete race.** Two tabs attempt updates/deletion from same prior state; verify no lost update/duplicate snapshot and final ledger is valid.
+20. **I-020 @history @recovery — History write failure rollback.** Force history snapshot write failure; verify edit/delete is not applied and original active item remains.
+21. **I-021 @history — Deleted item cannot affect later balance.** Edit/delete related items in sequence; verify only active row state contributes and snapshots do not.
+
+## J. Authorization, API behavior, and data privacy
+
+1. **J-001 @authorization — All private reads require auth.** As signed-out user call expenses, expense, members, payments, allocations, settlements, balance, read state, invitations manager endpoints; verify no private data.
+2. **J-002 @authorization — All expense-scoped reads require membership.** As Mallory call each expense-scoped route with known IDs; verify not-found response shape/status and no indication the expense exists.
+3. **J-003 @authorization — All expense-scoped writes require membership.** Attempt create/edit/delete payment, settlement, invite, read state, member removal/join operations as unauthorized actor; verify no mutation.
+4. **J-004 @authorization — Nested resource cross-expense checks.** Use a payment/allocation/settlement ID from Expense B with an Expense A context; verify cross-expense data and mutation are blocked.
+5. **J-005 @authorization — Tampered user IDs.** Attempt to spoof current user, creator, payer, payee, participant, or membership identity in body/query; server uses authenticated identity and server-loaded membership.
+6. **J-006 @authorization — Zod/schema rejection.** Send malformed JSON, wrong primitive types, missing required values, invalid IDs, and unexpected enum/date formats; verify safe client errors and no database mutation.
+7. **J-007 @authorization — Error non-disclosure.** Compare inaccessible and nonexistent expense responses; verify inaccessible response does not disclose existence.
+8. **J-008 @authorization — Identity source correctness.** Verify displayed members correspond to Neon Auth profile IDs and that legacy integer user rows are not treated as member identities.
+9. **J-009 @authorization — Private profile fields absent.** Inspect UI and JSON payloads; assert email, auth secrets, provider metadata, and unrelated private account fields are not exposed to members.
+10. **J-010 @authorization — SQL/HTML injection-shaped input.** Use harmless special-character strings in expense name/description/member name rendering; verify values render as text, remain scoped, and do not execute markup or alter another record.
+11. **J-011 @authorization — Read cursor membership.** A non-member cannot read or advance another member's cursor; a member cannot write another member's cursor.
+12. **J-012 @authorization — Invitation token handling.** Ensure raw token is accepted only through intended join/preview path, not exposed in logs, unrelated API responses, or persisted client storage.
+
+## K. Refreshing, navigation, and concurrency
+
+1. **K-001 @recovery — Reopen dialog uses loaded data.** Open/close members, balance, payment and share dialogs repeatedly; verify data is not refetched solely on dialog reopen.
+2. **K-002 @recovery — Expense re-entry refreshes.** Navigate away, update expense from second session, return; verify page entry fetches current server data.
+3. **K-003 @recovery — List re-entry refreshes.** Create/join expense in another session, return to expenses list; verify new membership appears.
+4. **K-004 @recovery — Short inactive return.** Hide tab for less than five minutes; verify no forced inactive refresh if policy says threshold not reached.
+5. **K-005 @recovery — Long inactive return.** Hide/unfocus tab for at least five minutes, reactivate; verify expense/list data refreshes.
+6. **K-006 @recovery — Manual reload.** Reload an expense; verify server data and cursor are loaded, and any page-memory-only state is reset as designed.
+7. **K-007 @recovery — Retry does not duplicate writes.** After failed/ambiguous write, retry; verify idempotent behavior or clear result and no double charge/settlement.
+8. **K-008 @concurrency — Two-member concurrent payments.** Alice and Bob create distinct payments concurrently; verify both persist with complete allocations and ledger ordering.
+9. **K-009 @concurrency — Settlement/payment concurrent updates.** Change balance while settlement is submitted; verify server-serialized validation prevents over-settlement.
+10. **K-010 @concurrency — Stale membership.** Remove a member in one session while they attempt a write in another; verify server rechecks membership at commit.
+11. **K-011 @concurrency — Refresh/write race.** Delay a GET while a successful write completes; verify stale response does not overwrite the newer rendered result.
+12. **K-012 @recovery — API 500 and offline network.** Simulate failed reads/writes separately; verify no success-shaped empty/zero fallback and explicit recovery controls.
+
+## L. Accessibility, visual consistency, and cross-browser behavior
+
+1. **L-001 @accessibility @mobile — Mobile primary actions.** Verify expense add, payment, balance, member, and share actions have accessible names and at least touch-sized targets.
+2. **L-002 @accessibility — Dialog focus.** Open each dialog; verify initial focus is meaningful dialog content rather than close button; close via Escape/control and verify focus restoration.
+3. **L-003 @accessibility — Keyboard navigation.** Traverse forms, dialogs, selects, comboboxes, toggles and menus using keyboard only; verify no traps or unreachable actions.
+4. **L-004 @accessibility — Label associations.** Verify every editable input/date/select/combobox/textarea has an accessible name and validation is associated to the field.
+5. **L-005 @accessibility — Validation announcements.** Trigger invalid form states and verify errors are perceivable by role/name and screen-reader live/alert semantics.
+6. **L-006 @accessibility — Async announcements.** Verify saving/loading/success/failure states are announced without moving focus unexpectedly.
+7. **L-007 @accessibility — Contrast light theme.** Check normal text/control states against backgrounds meet WCAG AA normal-text contrast (4.5:1) and focus/error states remain visible.
+8. **L-008 @accessibility — Contrast dark theme.** Repeat contrast checks in dark theme; verify dialog close buttons and calendar affordances remain visible.
+9. **L-009 @ui — Shared form consistency.** Compare input, date input, select, currency combobox and textarea for common height/radius/background/text/border/focus behavior and consistent label-to-control spacing.
+10. **L-010 @ui — Helper/error alignment.** Verify helper/error messages align with their control, remain legible, and do not overlap suffix/calendar controls.
+11. **L-011 @mobile — Small viewport layout.** Test 320px, 390px, and 430px widths for forms, modals, ledger, member names, long expense names, and balance text; assert no unintended horizontal page scroll.
+12. **L-012 @mobile — Virtual keyboard usability.** On mobile project, focus amount/description fields; verify form can scroll and submit control can be reached when keyboard is visible.
+13. **L-013 @visual — Light/dark theme field states.** Capture stable screenshots of each shared field, dialogs, errors, disabled/saving state, and date picker affordance for visual regression.
+14. **L-014 @browser — Chromium/WebKit/Firefox core path.** Run create expense, create payment, date clearing, and settlement smoke in supported browsers; document unavoidable native date picker differences.
+15. **L-015 @accessibility — Reduced motion.** Emulate reduced motion; verify dialogs/popovers remain functional and unnecessary animations are reduced.
+
+## M. Performance and robustness checks
+
+1. **M-001 @performance — Expense list size.** Seed a representative large list; verify render and navigation remain responsive and no duplicate expense cards appear.
+2. **M-002 @performance — Long ledger.** Seed hundreds of ledger entries and allocations; verify initial interaction remains responsive, sorting is correct, and there is no render loop.
+3. **M-003 @performance — Ledger rerender work.** Toggle unrelated UI state or open/close a dialog; verify ledger derived aggregation does not trigger redundant network calls or visible stalls.
+4. **M-004 @performance — Request count on dialog reopen.** Record network requests; reopening already-loaded dialogs must not refetch the same expense slice solely due to the reopen.
+5. **M-005 @performance — No duplicate requests on mount.** Verify each expected initial expense data request occurs once unless documented refresh behavior requires otherwise.
+6. **M-006 @performance — Slow connection.** Throttle to slow 3G; verify loading states, inputs, and retry remain usable, and duplicate submissions are guarded.
+7. **M-007 @performance — Large member list.** Seed many members; verify member/payer/participant controls remain operable and preview amounts remain correct.
+8. **M-008 @performance — Browser console and memory stability.** Navigate between list and expenses repeatedly; verify no accumulating listeners/timers, uncaught errors, or unbounded duplicate state.
+9. **M-009 @robustness — Long user-generated strings.** Use long Unicode names/descriptions and punctuation; verify safe wrapping, no overlap, no broken layout, and no exception.
+10. **M-010 @robustness — Rapid open/close and route changes.** Rapidly open dialogs and navigate away during pending reads; verify stale responses do not update the wrong expense.
+
+## N. Future: realtime multiplayer (not implemented)
+
+Enable these only after authenticated realtime delivery exists.
+
+1. **N-001 @realtime — Payment event updates peers.** Two members view same expense; Alice creates payment; Bob sees payment and all allocations without refresh/extra GET.
+2. **N-002 @realtime — Settlement event updates peers.** Bob records settlement; Alice sees ledger and changed balances without refresh.
+3. **N-003 @realtime — Event/HTTP response race.** Apply sender POST response and broadcast in either order; assert one activity item and correct allocations.
+4. **N-004 @realtime — Duplicate event.** Deliver same event ID twice; verify deduplication and no double balance change.
+5. **N-005 @realtime — Out-of-order events.** Deliver events in reversed order; verify deterministic ledger order and correct final balances.
+6. **N-006 @realtime — Missed event/reconnect.** Disconnect, create activity, reconnect; verify API reconciliation restores complete state.
+7. **N-007 @realtime — Subscription authorization.** Non-member cannot subscribe; removed member loses existing subscription and receives no later events.
+8. **N-008 @realtime — Publish failure.** Force publish error after successful database commit; verify write persists, caller is not shown a false failure, and subsequent reconciliation shows item.
+9. **N-009 @realtime — Read cursor with new event.** New broadcast remains unread and does not move current page's stable boundary.
+10. **N-010 @realtime — Leave/unmount cleanup.** Navigate away/repeatedly enter; verify old subscriptions close and do not duplicate events.
+11. **N-011 @realtime — Member join event.** New member appears to authorized viewers only after membership commits, with permitted identity fields only.
+12. **N-012 @realtime — Concurrent same-expense transactions.** Multiple members create items simultaneously; verify no lost events, duplicate entries, or stale balance overwrite.
+
+## O. Future: offline cache and queued activity (not implemented)
+
+These are acceptance tests for the planned offline phase, not current-product expectations. Do not make the current suite fail merely because offline support has not shipped.
+
+1. **O-001 @offline — Previously loaded expense opens offline.** Load expense and ledger online, go offline, revisit the page; verify cached content appears with explicit stale/offline indication.
+2. **O-002 @offline — Never-loaded expense unavailable offline.** Go offline and open an expense never loaded by this account; verify no fabricated/private content is shown and recovery is clear.
+3. **O-003 @offline — Hydration consistency.** With cached data, verify server and initial client markup remain consistent; no hydration warning or persisted-state flash.
+4. **O-004 @offline — Online server reconciliation.** Modify expense in another session while offline; reconnect and verify server state supersedes stale cache before synchronization completes.
+5. **O-005 @offline — Offline payment draft.** Create payment draft offline; verify it is explicitly labeled pending/draft and does not update authoritative balances or look committed.
+6. **O-006 @offline — Offline settlement draft.** Create settlement draft offline; verify same pending semantics and no authoritative balance change.
+7. **O-007 @offline — Draft persistence after reload.** Reload browser offline; verify outbox drafts remain and can be reviewed.
+8. **O-008 @offline — Review read-only first.** Reconnect; verify each draft opens read-only by default with position/count (e.g. “2 of 4”) and explicit submit/edit/delete actions.
+9. **O-009 @offline — Edit pending draft.** Edit draft using existing payment/settlement form; verify edit updates draft, not server item, until explicit submit.
+10. **O-010 @offline — Delete draft.** Explicitly delete pending draft; verify it is removed from outbox only after confirmation/selection, with no API write.
+11. **O-011 @offline — Approve and replay payment.** Explicitly submit reviewed draft; verify existing authenticated API validates it and successful submit removes exactly that draft.
+12. **O-012 @offline — Approve and replay settlement.** Repeat settlement replay and verify final server balance/activity.
+13. **O-013 @offline — Replay validation failure.** Change server membership/balance while draft is pending; reconnect and submit; verify validation failure is visible, draft remains recoverable, and no duplicate write.
+14. **O-014 @offline — Transient replay failure.** Fail network during replay; verify draft remains and retry does not duplicate a committed activity if response was ambiguous.
+15. **O-015 @offline — Account partitioning.** Cache data/draft as Alice, sign out, sign in as Bob; verify Alice's cached data and drafts are inaccessible.
+16. **O-016 @offline — Account switch confirmation.** Switch accounts with pending drafts; verify explicit confirmation before discarding scoped cache/drafts and preserve them if cancelled.
+17. **O-017 @offline — Sign-out clearing.** Sign out with no drafts; verify scoped cache is cleared and cannot be accessed through browser back/offline route.
+18. **O-018 @offline — No sensitive cache values.** Inspect IndexedDB; verify auth secrets and invitation tokens are never stored.
+19. **O-019 @offline — Offline invitation limitation.** Verify cached offline expense does not make invite token available or allow unauthorized join actions.
+20. **O-020 @offline — Multiple pending draft navigation.** Move through drafts and verify current item position/count remains accurate after submit, edit, delete, and retry.
+21. **O-021 @offline — Membership removed while offline.** Remove account from expense online, then reconnect; verify cached data is invalidated/restricted and pending draft fails safely.
+22. **O-022 @offline — Draft ordering and no silent loss.** Queue multiple mixed draft types; verify each remains pending until success or explicit deletion and no draft is skipped.
+
+## Suggested first implementation order
+
+1. Add Playwright configuration, a disposable test database/auth setup, trace/video-on-failure, and CI-safe environment guards.
+2. Implement the `@smoke` path: sign in, create expense, create invitation, join from second account, create payment, inspect balances, record settlement.
+3. Add authorization/data isolation and exact-money/date suites before broad visual coverage.
+4. Add creator-only edit/delete, tombstones, read cursors, and failure recovery.
+5. Add mobile/accessibility and performance regression suites.
+6. Add realtime and offline suites only when those product phases are implemented.
+
+Keep cases independent where possible. Use fresh data per test, avoid ordering dependencies, and assert durable server effects for every successful write. A passing suite is strong evidence, not a mathematical guarantee that behavior is “100% good”; combine E2E coverage with unit/domain tests, schema validation, static checks, production monitoring, and manual exploratory testing.
