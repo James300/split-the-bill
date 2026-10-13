@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export interface ExpenseBalance {
   userId: string
@@ -35,16 +35,26 @@ async function getErrorMessage(response: Response, fallback: string) {
   }
 }
 
-export function useExpenseBalances(expenseId: string, enabled: boolean, refreshKey = 0) {
+export function useExpenseBalances(
+  expenseId: string,
+  enabled: boolean,
+  refreshKey = 0,
+  pageRefreshKey = 0,
+) {
   const [balances, setBalances] = useState<ExpenseBalance[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [retryKey, setRetryKey] = useState(0)
+  const lastFetchKey = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!enabled) return
+    const fetchKey = `${expenseId}:${refreshKey}:${pageRefreshKey}:${retryKey}`
+    if (!enabled || lastFetchKey.current === fetchKey) return
+
+    lastFetchKey.current = fetchKey
 
     let cancelled = false
+    let finished = false
 
     async function loadBalances() {
       setIsLoading(true)
@@ -65,15 +75,19 @@ export function useExpenseBalances(expenseId: string, enabled: boolean, refreshK
           setError(loadError instanceof Error ? loadError.message : 'Could not load expense balances.')
         }
       } finally {
-        if (!cancelled) setIsLoading(false)
+        if (!cancelled) {
+          finished = true
+          setIsLoading(false)
+        }
       }
     }
 
     void loadBalances()
     return () => {
       cancelled = true
+      if (!finished && lastFetchKey.current === fetchKey) lastFetchKey.current = null
     }
-  }, [enabled, expenseId, refreshKey, retryKey])
+  }, [enabled, expenseId, pageRefreshKey, refreshKey, retryKey])
 
   const retry = useCallback(() => setRetryKey((current) => current + 1), [])
 

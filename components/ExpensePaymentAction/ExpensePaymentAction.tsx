@@ -14,16 +14,18 @@ export default function ExpensePaymentAction({
   editingPayment,
   editingAllocations,
   onEditComplete,
+  pageRefreshKey,
 }: {
   expenseId: string
   onCreated: () => void
   editingPayment?: ExpensePaymentRecord
   editingAllocations?: PaymentAllocationRecord[]
   onEditComplete: () => void
+  pageRefreshKey: number
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const isDialogOpen = isOpen || Boolean(editingPayment)
-  const membersState = useExpenseMembers(expenseId, isDialogOpen)
+  const membersState = useExpenseMembers(expenseId, isDialogOpen, pageRefreshKey)
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open)

@@ -24,7 +24,7 @@ async function getErrorMessage(response: Response, fallback: string) {
   }
 }
 
-export function useExpenseSettlements(expenseId: string, refreshKey: number) {
+export function useExpenseSettlements(expenseId: string, refreshKey: number, pageRefreshKey = 0) {
   const [settlements, setSettlements] = useState<ExpenseSettlementRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -61,7 +61,7 @@ export function useExpenseSettlements(expenseId: string, refreshKey: number) {
     return () => {
       cancelled = true
     }
-  }, [expenseId, refreshKey, retryKey])
+  }, [expenseId, pageRefreshKey, refreshKey, retryKey])
 
   const retry = useCallback(() => setRetryKey((current) => current + 1), [])
   return { settlements, isLoading, error, retry }

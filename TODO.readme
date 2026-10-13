@@ -180,6 +180,16 @@ Done when creators can edit or soft-delete their payments and settlements, other
 - [ ] Verify accessible mobile layout, touch targets, keyboard behavior, offline/network failure recovery, and currency formatting.
 - [ ] Add automated coverage for balance calculations and domain validation, plus an end-to-end smoke path through sign-up, invite join, payment, and settlement when requested/available.
 
+## Data freshness — Implemented (runtime unverified)
+
+Expense data remains loaded for the current page visit when a user closes and reopens a dialog. Expense-scoped members, balances, payments, settlements, and the expense title refresh on page entry and after a successful relevant write; the expenses list loads from the server on page entry. Returning to a visible browser tab/window after at least five minutes away refreshes data used by that page. Explicit retry controls remain available after failures.
+
+- [x] Avoid refetching data solely because a previously opened dialog is reopened.
+- [x] Refresh expense page data on entry and refresh expenses on list navigation.
+- [x] Detect return from a hidden or unfocused browser tab/window after five minutes and refresh the current page.
+- [x] Preserve existing write-triggered refreshes and manual retry behavior.
+- [ ] Verify dialog reopen, navigation return, five-minute inactive return, and short inactive return in a browser session.
+
 ## Phase 2: Multiplayer expense updates — Not started
 
 Add authenticated, expense-scoped realtime subscriptions so members viewing the same expense see newly committed payments and settlements without waiting for a page refresh or another API read. The current ledger and balance hooks load their own data, and payment/settlement saves trigger a page-level refresh; Phase 2 should move these views onto shared expense state that can be updated from either the existing initial reads or realtime events. Keep HTTP writes and their validation authoritative. Publishing a realtime event must never be required to commit a transaction.

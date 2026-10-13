@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export interface ExpensePaymentRecord {
   id: number
@@ -30,17 +30,27 @@ async function getErrorMessage(response: Response, fallback: string) {
   }
 }
 
-export function useExpensePayments(expenseId: string, refreshKey: number, enabled = true) {
+export function useExpensePayments(
+  expenseId: string,
+  refreshKey: number,
+  enabled = true,
+  pageRefreshKey = 0,
+) {
   const [payments, setPayments] = useState<ExpensePaymentRecord[]>([])
   const [allocations, setAllocations] = useState<PaymentAllocationRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retryKey, setRetryKey] = useState(0)
+  const lastFetchKey = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!enabled) return
+    const fetchKey = `${expenseId}:${refreshKey}:${pageRefreshKey}:${retryKey}`
+    if (!enabled || lastFetchKey.current === fetchKey) return
+
+    lastFetchKey.current = fetchKey
 
     let cancelled = false
+    let finished = false
 
     async function loadPayments() {
       setIsLoading(true)
@@ -74,15 +84,19 @@ export function useExpensePayments(expenseId: string, refreshKey: number, enable
           setError(loadError instanceof Error ? loadError.message : 'Could not load expense payments.')
         }
       } finally {
-        if (!cancelled) setIsLoading(false)
+        if (!cancelled) {
+          finished = true
+          setIsLoading(false)
+        }
       }
     }
 
     void loadPayments()
     return () => {
       cancelled = true
+      if (!finished && lastFetchKey.current === fetchKey) lastFetchKey.current = null
     }
-  }, [enabled, expenseId, refreshKey, retryKey])
+  }, [enabled, expenseId, pageRefreshKey, refreshKey, retryKey])
 
   const retry = useCallback(() => setRetryKey((current) => current + 1), [])
 

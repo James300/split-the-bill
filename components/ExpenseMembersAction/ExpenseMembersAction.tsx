@@ -7,9 +7,15 @@ import IconButton from '@/components/IconButton/IconButton'
 import ExpenseMembersManager from '@/components/ExpenseMembersManager/ExpenseMembersManager'
 import { useExpenseMembers } from '@/hooks/useExpenseMembers/useExpenseMembers'
 
-export default function ExpenseMembersAction({ expenseId }: { expenseId: string }) {
+export default function ExpenseMembersAction({
+  expenseId,
+  pageRefreshKey,
+}: {
+  expenseId: string
+  pageRefreshKey: number
+}) {
   const [isOpen, setIsOpen] = useState(false)
-  const membersState = useExpenseMembers(expenseId, isOpen)
+  const membersState = useExpenseMembers(expenseId, isOpen, pageRefreshKey)
 
   return (
     <>

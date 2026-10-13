@@ -7,8 +7,8 @@ export interface IExpenseProps {
   id: string
 }
 
-function Expense({ id }: IExpenseProps) {
-  const expense = useExpenseQuery(id)
+function Expense({ id, pageRefreshKey }: IExpenseProps & { pageRefreshKey: number }) {
+  const expense = useExpenseQuery(id, pageRefreshKey)
 
   return <h1 className='truncate text-xl font-bold'>{expense.expense?.name ?? 'Expense'}</h1>
 }

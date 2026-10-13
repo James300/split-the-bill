@@ -36,19 +36,21 @@ function compareActivityOrder(
 export default function ExpensePaymentList({
   expenseId,
   refreshKey,
+  pageRefreshKey,
   onEditPayment,
   onEditSettlement,
   onActivityChanged,
 }: {
   expenseId: string
   refreshKey: number
+  pageRefreshKey: number
   onEditPayment: (payment: ExpensePaymentRecord, allocations: PaymentAllocationRecord[]) => void
   onEditSettlement: (settlement: ExpenseSettlementRecord) => void
   onActivityChanged: () => void
 }) {
-  const membersState = useExpenseMembers(expenseId, true)
-  const paymentsState = useExpensePayments(expenseId, refreshKey)
-  const settlementsState = useExpenseSettlements(expenseId, refreshKey)
+  const membersState = useExpenseMembers(expenseId, true, pageRefreshKey)
+  const paymentsState = useExpensePayments(expenseId, refreshKey, true, pageRefreshKey)
+  const settlementsState = useExpenseSettlements(expenseId, refreshKey, pageRefreshKey)
   const readState = useExpenseReadState(expenseId)
   const [showSettledHistory, setShowSettledHistory] = useState(false)
   const { members, currency, isLoading: membersLoading, error: membersError, reload: reloadMembers } = membersState

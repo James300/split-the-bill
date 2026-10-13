@@ -19,19 +19,21 @@ export default function ExpenseBalanceAction({
   editingSettlement,
   onEditComplete,
   refreshKey,
+  pageRefreshKey,
 }: {
   expenseId: string
   onSettled: () => void
   editingSettlement?: ExpenseSettlementRecord
   onEditComplete: () => void
   refreshKey: number
+  pageRefreshKey: number
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isCreatingSettlement, setIsCreatingSettlement] = useState(false)
   const isDialogOpen = isOpen || Boolean(editingSettlement)
-  const membersState = useExpenseMembers(expenseId, isDialogOpen)
-  const balancesState = useExpenseBalances(expenseId, isDialogOpen, refreshKey)
-  const paymentsState = useExpensePayments(expenseId, refreshKey, isDialogOpen)
+  const membersState = useExpenseMembers(expenseId, isDialogOpen, pageRefreshKey)
+  const balancesState = useExpenseBalances(expenseId, isDialogOpen, refreshKey, pageRefreshKey)
+  const paymentsState = useExpensePayments(expenseId, refreshKey, isDialogOpen, pageRefreshKey)
   const { members, currency, isLoading: membersLoading, error: membersError, reload: reloadMembers } = membersState
   const { balances, isLoading: balancesLoading, error: balancesError, retry: retryBalances } = balancesState
   const {
@@ -141,63 +143,68 @@ export default function ExpenseBalanceAction({
 
           {members.length > 0 && balances !== null && currency && currentMember && currentBalance && (
             <>
-              {otherMembers.length > 1 && (
-                <div className='rounded-lg border border-border bg-muted/30 p-4'>
-                  <p className='text-sm font-medium'>Your net across this expense</p>
-                  <p className='mt-1 text-lg font-semibold'>
-                    {currentBalance.amountNet > 0
-                      ? `You are owed ${formatMinorCurrencyAmount(currentBalance.amountNet, currency)} overall`
-                      : currentBalance.amountNet < 0
-                        ? `You owe ${formatMinorCurrencyAmount(Math.abs(currentBalance.amountNet), currency)} overall`
-                        : 'You are settled up overall'}
-                  </p>
-                </div>
-              )}
-
-              <div className='flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-4'>
-                <div className='flex items-center justify-between gap-3'>
-                  <h3 className='text-sm font-medium'>Total spent</h3>
-                  {!paymentsLoading && !paymentsError && (
-                    <p className='shrink-0 text-lg font-semibold'>
-                      {formatMinorCurrencyAmount(totalSpent, currency)}
-                    </p>
+              {!isCreatingSettlement && !editingSettlement && (
+                <>
+                  {otherMembers.length > 1 && (
+                    <div className='rounded-lg border border-border bg-muted/30 p-4'>
+                      <p className='text-sm font-medium'>Your net across this expense</p>
+                      <p className='mt-1 text-lg font-semibold'>
+                        {currentBalance.amountNet > 0
+                          ? `You are owed ${formatMinorCurrencyAmount(currentBalance.amountNet, currency)} overall`
+                          : currentBalance.amountNet < 0
+                            ? `You owe ${formatMinorCurrencyAmount(Math.abs(currentBalance.amountNet), currency)} overall`
+                            : 'You are settled up overall'}
+                      </p>
+                    </div>
                   )}
-                </div>
-                {paymentsLoading ? (
-                  <p role='status' className='text-sm text-muted-foreground'>Loading spending breakdown…</p>
-                ) : paymentsError ? (
-                  <p role='alert' className='text-sm text-destructive'>{paymentsError}</p>
-                ) : (
-                  <PaymentShareBreakdown
-                    shares={aggregateShares}
-                    membersById={membersById}
-                    currency={currency}
-                    title='Total share by member'
-                  />
-                )}
-              </div>
 
-              {otherMembers.length === 0 ? (
-                <p className='text-sm text-muted-foreground'>You are the only member of this expense.</p>
-              ) : (
-                <ul className='flex flex-col gap-2' aria-label='Suggested amounts involving you'>
-                  {otherMembers.map((member) => {
-                    const amount = transferAmounts.get(member.id) ?? 0
+                  <div className='flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-4'>
+                    <div className='flex items-center justify-between gap-3'>
+                      <h3 className='text-sm font-medium'>Total spent</h3>
+                      {!paymentsLoading && !paymentsError && (
+                        <p className='shrink-0 text-lg font-semibold'>
+                          {formatMinorCurrencyAmount(totalSpent, currency)}
+                        </p>
+                      )}
+                    </div>
+                    {paymentsLoading ? (
+                      <p role='status' className='text-sm text-muted-foreground'>Loading spending breakdown…</p>
+                    ) : paymentsError ? (
+                      <p role='alert' className='text-sm text-destructive'>{paymentsError}</p>
+                    ) : (
+                      <PaymentShareBreakdown
+                        shares={aggregateShares}
+                        membersById={membersById}
+                        currency={currency}
+                        title='Total share by member'
+                      />
+                    )}
+                  </div>
 
-                    return (
-                      <li key={member.id} className='flex min-h-12 items-center justify-between gap-3 rounded-lg border border-border px-3 py-2'>
-                        <span className='min-w-0 break-words text-sm font-medium'>{member.name}</span>
-                        <span className='shrink-0 text-right text-sm'>
-                          {amount > 0
-                            ? currentBalance.amountNet > 0
-                              ? `Owes you ${formatMinorCurrencyAmount(amount, currency)}`
-                              : `You owe ${formatMinorCurrencyAmount(amount, currency)}`
-                            : 'No amount to settle with you'}
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
+                  {otherMembers.length === 0 ? (
+                    <p className='text-sm text-muted-foreground'>You are the only member of this expense.</p>
+                  ) : (
+                    <ul className='flex flex-col gap-2' aria-label='Suggested amounts involving you'>
+                      {otherMembers.map((member) => {
+                        const amount = transferAmounts.get(member.id) ?? 0
+
+                        return (
+                          <li key={member.id} className='flex min-h-12 items-center justify-between gap-3 rounded-lg border border-border px-3 py-2'>
+                            <span className='min-w-0 break-words text-sm font-medium'>{member.name}</span>
+                            <span className='shrink-0 text-right text-sm'>
+                              {amount > 0
+                                ? currentBalance.amountNet > 0
+                                  ? `Owes you ${formatMinorCurrencyAmount(amount, currency)}`
+                                  : `You owe ${formatMinorCurrencyAmount(amount, currency)}`
+                                : 'No amount to settle with you'}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+
+                </>
               )}
 
               {currentBalance.amountNet < 0 && !editingSettlement && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export interface ExpenseMember {
   id: string
@@ -25,16 +25,19 @@ async function getErrorMessage(response: Response, fallback: string) {
   }
 }
 
-export function useExpenseMembers(expenseId: string, enabled: boolean) {
+export function useExpenseMembers(expenseId: string, enabled: boolean, pageRefreshKey = 0) {
   const [members, setMembers] = useState<ExpenseMember[]>([])
   const [canManageMembers, setCanManageMembers] = useState(false)
   const [currency, setCurrency] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [removingUserId, setRemovingUserId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const lastFetchKey = useRef<string | null>(null)
+  const requestSequence = useRef(0)
 
   const loadMembers = useCallback(async () => {
     if (!enabled) return
+    const requestId = ++requestSequence.current
     setIsLoading(true)
     setError(null)
     try {
@@ -43,19 +46,26 @@ export function useExpenseMembers(expenseId: string, enabled: boolean) {
         throw new Error(await getErrorMessage(response, 'Could not load expense members.'))
       }
       const data = await response.json() as ExpenseMembersResponse
+      if (requestId !== requestSequence.current) return
       setMembers(data.members)
       setCanManageMembers(data.canManageMembers)
       setCurrency(data.currency)
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load expense members.')
+      if (requestId === requestSequence.current) {
+        setError(loadError instanceof Error ? loadError.message : 'Could not load expense members.')
+      }
     } finally {
-      setIsLoading(false)
+      if (requestId === requestSequence.current) setIsLoading(false)
     }
   }, [enabled, expenseId])
 
   useEffect(() => {
+    const fetchKey = `${expenseId}:${pageRefreshKey}`
+    if (!enabled || lastFetchKey.current === fetchKey) return
+
+    lastFetchKey.current = fetchKey
     void loadMembers()
-  }, [loadMembers])
+  }, [enabled, expenseId, loadMembers, pageRefreshKey])
 
   const removeMember = useCallback(async (userId: string) => {
     setRemovingUserId(userId)

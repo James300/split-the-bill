@@ -10,6 +10,8 @@ Treat mobile web as the primary use case. People should be able to view the expe
 
 Use the Page title row for compact page-level actions: keep the title at the start, align actions at the end, and use accessible icon buttons with touch-sized hit areas on mobile. Put larger or multi-step actions in a dialog instead of crowding the page header. Keep request and interaction logic in focused hooks when it makes UI components simpler to read and maintain.
 
+Keep fetched data in memory while the user remains on an expense page; closing and reopening a dialog must not refetch data already loaded for that page visit. Refresh page data on manual browser reload, when entering or returning to an expense or expenses list, and when the browser becomes active again after at least five minutes away. A successful write may refresh the affected data, and explicit retry actions must remain available for failures.
+
 On the expenses list, provide one add-expense icon action in the title row. It opens a create-expense dialog; after a successful save, close the dialog and refresh the list. Do not show a separate add-expense button or dedicated create-expense page.
 
 Prefer shared UI components from `components/` over raw HTML controls or one-off styling. Extend a shared component when the needed behavior or visual variant is missing, and use the shared button, input, icon-button, and dialog components in feature UI.

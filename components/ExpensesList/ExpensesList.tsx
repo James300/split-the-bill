@@ -1,5 +1,7 @@
-import { memo } from 'react'
+import { memo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import ExpenseCard, { IExpenseCardProps} from '../ExpenseCard/ExpenseCard'
+import { useRefreshWhenActive } from '@/hooks/useRefreshWhenActive/useRefreshWhenActive'
 
 export interface IExpensesListProps {
   expenses: IExpenseCardProps[]
@@ -8,6 +10,10 @@ export interface IExpensesListProps {
 function ExpensesList ({
   expenses,
 }: IExpensesListProps) {
+  const router = useRouter()
+  const refreshExpenses = useCallback(() => router.refresh(), [router])
+  useRefreshWhenActive(refreshExpenses)
+
   if (expenses.length === 0) {
     return (
       <div className='rounded-xl border border-dashed p-6 text-center' role='status'>

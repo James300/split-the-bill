@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useExpense, useExpenses } from '@/store/ExpensesStore/ExpensesStore'
 import { useQuery } from '../useQuery/useQuery'
 
@@ -30,13 +30,18 @@ export function useExpensesQuery() {
   return { expenses, isLoading, isError }
 }
 
-export function useExpenseQuery(id: string) {
+export function useExpenseQuery(id: string, pageRefreshKey = 0) {
   const { fetchExpense, isLoading, isError } = useExpenseQueryHelper()
   const expense = useExpense(id)
+  const lastFetchKey = useRef<string | null>(null)
 
   useEffect(() => {
-    fetchExpense()
-  }, [fetchExpense])
+    const fetchKey = `${id}:${pageRefreshKey}`
+    if (isLoading || lastFetchKey.current === fetchKey) return
+
+    lastFetchKey.current = fetchKey
+    void fetchExpense(true)
+  }, [fetchExpense, id, isLoading, pageRefreshKey])
   
   return { expense, isLoading, isError }
 }
