@@ -39,6 +39,12 @@ Useful scripts:
 - npm run db:migrate:check lists pending database migrations.
 - npm run db:migrate applies pending database migrations safely.
 
+## Install as an app
+
+The app includes a web app manifest and install icons. On a supported browser, open the deployed site over HTTPS and use the browser's install option; on iOS, use Safari's Share menu and choose Add to Home Screen. Localhost can be used for development.
+
+Installation does not enable offline use. Offline expense caching and queued activity are tracked separately in Phase 3 of [TODO.readme](TODO.readme).
+
 ## Stack
 
 - Next.js App Router with React and TypeScript
